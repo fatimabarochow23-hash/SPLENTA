@@ -1,0 +1,35 @@
+# Build artifacts
+Builds/
+build/
+Build/
+DerivedData/
+
+# IDE files
+*.xcodeproj
+*.xcworkspace
+.vscode/
+.idea/
+
+# macOS
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Visual Studio
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+.vs/
+
+# Compiled files
+*.o
+*.obj
+*.exe
+*.dll
+*.dylib
+*.so
+
+# JUCE
+*.jucer.bak
