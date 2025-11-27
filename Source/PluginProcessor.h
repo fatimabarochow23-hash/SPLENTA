@@ -1,6 +1,7 @@
 /*
   ==============================================================================
-    PluginProcessor.h (SPLENTA V17.3 - Final Definitions)
+    PluginProcessor.h (SPLENTA V18.5 - 20251127.01)
+    Dynamic Envelope Visualization System
   ==============================================================================
 */
 

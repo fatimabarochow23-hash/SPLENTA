@@ -1,8 +1,7 @@
 /*
   ==============================================================================
-    EnvelopeView.cpp
+    EnvelopeView.cpp (SPLENTA V18.5 - 20251127.01)
     Dynamic Envelope Network Visualization Component
-    Created: 2025-11-27
   ==============================================================================
 */
 

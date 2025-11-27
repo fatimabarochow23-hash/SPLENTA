@@ -1,6 +1,7 @@
 /*
   ==============================================================================
-    PluginProcessor.cpp (SPLENTA V17.3 - Full Sync)
+    PluginProcessor.cpp (SPLENTA V18.5 - 20251127.01)
+    Dynamic Envelope Visualization System
   ==============================================================================
 */
 
