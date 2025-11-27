@@ -63,6 +63,17 @@ NewProjectAudioProcessor::NewProjectAudioProcessor()
     currentMin = 0.0f;
     currentMax = 0.0f;
 
+    // Envelope Buffer Init
+    for (auto& point : envelopeBuffer) {
+        point.detector = 0.0f;
+        point.synthesizer = 0.0f;
+        point.output = 0.0f;
+    }
+    envSampleCounter = 0;
+    peakDetector = 0.0f;
+    peakSynthesizer = 0.0f;
+    peakOutput = 0.0f;
+
     std::fill(fftData.begin(), fftData.end(), 0.0f);
 }
 
@@ -94,6 +105,12 @@ void NewProjectAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     peakSampleCounter = 0;
     currentMin = 0.0f;
     currentMax = 0.0f;
+
+    // Reset Envelope Aggregation
+    envSampleCounter = 0;
+    peakDetector = 0.0f;
+    peakSynthesizer = 0.0f;
+    peakOutput = 0.0f;
 
     f_x1 = 0.0f; f_x2 = 0.0f; f_y1 = 0.0f; f_y2 = 0.0f;
     dry_hp_x1[0] = 0.0f; dry_hp_y1[0] = 0.0f;
@@ -281,6 +298,46 @@ void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
                  float mixed = (filteredDry * currentDuckGain) + (finalWet * mixPct);
                  if (useSoftClip) mixed = std::tanh(mixed);
                  channelData[sample] = mixed;
+
+                 // === Envelope Peak Aggregation (for EnvelopeView) ===
+                 // Only process once per sample (ch == 0)
+                 if (ch == 0)
+                 {
+                     // Accumulate peak values (linear amplitude)
+                     float currentDetector = std::abs(detectorEnv);
+                     float currentSynth = std::abs(envAmplitude);
+                     float currentOutput = std::abs(mixed);
+
+                     if (currentDetector > peakDetector) peakDetector = currentDetector;
+                     if (currentSynth > peakSynthesizer) peakSynthesizer = currentSynth;
+                     if (currentOutput > peakOutput) peakOutput = currentOutput;
+
+                     envSampleCounter++;
+
+                     // Every 64 samples, push aggregated peak to FIFO
+                     if (envSampleCounter >= envUpdateRate)
+                     {
+                         EnvelopeDataPoint dataPoint;
+                         dataPoint.detector = peakDetector;
+                         dataPoint.synthesizer = peakSynthesizer;
+                         dataPoint.output = peakOutput;
+
+                         // Write to FIFO (lock-free)
+                         int start1, size1, start2, size2;
+                         envelopeFifo.prepareToWrite(1, start1, size1, start2, size2);
+
+                         if (size1 > 0)
+                             envelopeBuffer[start1] = dataPoint;
+
+                         envelopeFifo.finishedWrite(size1);
+
+                         // Reset for next window
+                         envSampleCounter = 0;
+                         peakDetector = 0.0f;
+                         peakSynthesizer = 0.0f;
+                         peakOutput = 0.0f;
+                     }
+                 }
              }
         }
     }

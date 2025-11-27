@@ -9,7 +9,7 @@
 #include <cmath>
 
 NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor (NewProjectAudioProcessor& p)
-    : AudioProcessorEditor (&p), audioProcessor (p), scopeComponent(p)
+    : AudioProcessorEditor (&p), audioProcessor (p), envelopeView(p)
 {
     setupKnob(threshSlider, "THRESHOLD", threshAtt, " dB");
     setupKnob(ceilingSlider,"CEILING",   ceilingAtt," dB");
@@ -73,7 +73,7 @@ NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor (NewProjectAudioP
     expandButton.setAlpha(0.0f);
     expandButton.onClick = [this] { showFFT = !showFFT; resized(); repaint(); };
 
-    addAndMakeVisible(scopeComponent);
+    addAndMakeVisible(envelopeView);
 
     setSize (960, 620);
     startTimerHz(60);
@@ -123,52 +123,30 @@ void NewProjectAudioProcessorEditor::updateColors()
         b.setColour(juce::TextButton::textColourOnId, juce::Colours::black);
     };
     applyBtn(agmButton); applyBtn(clipButton); applyBtn(expandButton);
-    
-    scopeComponent.setColors(c_accent);
 }
 
 void NewProjectAudioProcessorEditor::mouseMove(const juce::MouseEvent& e) {
-    if (dividerArea.contains(e.getPosition()) && showFFT) setMouseCursor(juce::MouseCursor::LeftRightResizeCursor);
-    else if (scopeArea.contains(e.getPosition())) {
-        float relY = (float)e.getPosition().y - scopeArea.getY();
-        float distTh = std::abs(relY - scopeComponent.getThresholdY());
-        float distCe = std::abs(relY - scopeComponent.getCeilingY());
-        if (distTh < 15.0f || distCe < 15.0f) setMouseCursor(juce::MouseCursor::UpDownResizeCursor);
-        else setMouseCursor(juce::MouseCursor::NormalCursor);
-    }
-    else setMouseCursor(juce::MouseCursor::NormalCursor);
+    if (dividerArea.contains(e.getPosition()) && showFFT)
+        setMouseCursor(juce::MouseCursor::LeftRightResizeCursor);
+    else
+        setMouseCursor(juce::MouseCursor::NormalCursor);
 }
+
 void NewProjectAudioProcessorEditor::mouseDown(const juce::MouseEvent& e) {
-    if (dividerArea.contains(e.getPosition()) && showFFT) currentDragAction = Splitter;
-    else if (scopeArea.contains(e.getPosition())) {
-        float relY = (float)e.getPosition().y - scopeArea.getY();
-        float distTh = std::abs(relY - scopeComponent.getThresholdY());
-        float distCe = std::abs(relY - scopeComponent.getCeilingY());
-        
-        if (distTh < 15.0f && distTh <= distCe) currentDragAction = DragThreshold;
-        else if (distCe < 15.0f) currentDragAction = DragCeiling;
-    }
+    if (dividerArea.contains(e.getPosition()) && showFFT)
+        currentDragAction = Splitter;
 }
-void NewProjectAudioProcessorEditor::mouseUp(const juce::MouseEvent&) { currentDragAction = None; }
+
+void NewProjectAudioProcessorEditor::mouseUp(const juce::MouseEvent&) {
+    currentDragAction = None;
+}
 
 void NewProjectAudioProcessorEditor::mouseDrag(const juce::MouseEvent& e) {
     if (currentDragAction == Splitter && showFFT) {
         float newRatio = (float)(e.getPosition().x - 10) / 880.0f;
         splitRatio = juce::jlimit(0.1f, 0.9f, newRatio);
-        resized(); repaint();
-    }
-    else if (currentDragAction == DragThreshold || currentDragAction == DragCeiling) {
-        float y = (float)e.getPosition().y - scopeArea.getY();
-        float midY = scopeComponent.getMidY();
-        float scale = scopeComponent.getScaleFactor();
-        
-        float gain = (midY - y) / scale;
-        float db = juce::Decibels::gainToDecibels(gain);
-        db = juce::jlimit(-60.0f, 0.0f, db);
-        
-        if (currentDragAction == DragThreshold) threshSlider.setValue(db, juce::sendNotification);
-        else ceilingSlider.setValue(db, juce::sendNotification);
-        scopeComponent.repaint();
+        resized();
+        repaint();
     }
 }
 
@@ -195,12 +173,13 @@ void NewProjectAudioProcessorEditor::drawPixelHeadphone(juce::Graphics& g, int x
 
 void NewProjectAudioProcessorEditor::timerCallback()
 {
-    scopeComponent.setThresholds((float)threshSlider.getValue(), (float)ceilingSlider.getValue());
     if (audioProcessor.nextFFTBlockReady) {
         audioProcessor.forwardFFT.performFrequencyOnlyForwardTransform (audioProcessor.fftData.data());
         audioProcessor.nextFFTBlockReady = false;
         repaint();
-    } else { repaint(); }
+    } else {
+        repaint();
+    }
 }
 
 void NewProjectAudioProcessorEditor::paint (juce::Graphics& g)
@@ -221,15 +200,15 @@ void NewProjectAudioProcessorEditor::paint (juce::Graphics& g)
     // Areas
     int totalW = 960 - 20; int startX = 10; int topY = 30; int height = 200;
     int splitX = startX + (int)(totalW * (showFFT ? splitRatio : 1.0f));
-    
-    scopeArea = juce::Rectangle<int>(startX, topY, splitX - startX, height);
+
+    envelopeArea = juce::Rectangle<int>(startX, topY, splitX - startX, height);
     dividerArea = juce::Rectangle<int>(splitX, topY, showFFT ? 4 : 0, height);
     fftArea = juce::Rectangle<int>(splitX + 4, topY, (startX + totalW) - (splitX + 4), height);
 
-    // Scope
-    scopeComponent.setBounds(scopeArea);
-    g.setColour (c_panel); g.fillRect (scopeArea);
-    g.setColour (c_accent.withAlpha(0.2f)); g.drawRect (scopeArea);
+    // Envelope View
+    envelopeView.setBounds(envelopeArea);
+    g.setColour (c_panel); g.fillRect (envelopeArea);
+    g.setColour (c_accent.withAlpha(0.2f)); g.drawRect (envelopeArea);
 
     // FFT
     if (showFFT) {
@@ -285,7 +264,7 @@ void NewProjectAudioProcessorEditor::paint (juce::Graphics& g)
     }
 
     if (audioProcessor.isTriggeredUI) {
-        int iconX = showFFT ? (fftArea.getRight() - 50) : (scopeArea.getRight() - 50);
+        int iconX = showFFT ? (fftArea.getRight() - 50) : (envelopeArea.getRight() - 50);
         drawPixelArt(g, iconX, 45, 4, c_accent, themeID);
     }
     

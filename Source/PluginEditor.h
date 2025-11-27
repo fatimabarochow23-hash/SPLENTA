@@ -8,105 +8,7 @@
 
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
-
-// --- 内部类：滚动示波器 ---
-class RollingScope : public juce::Component, public juce::Timer
-{
-public:
-    RollingScope(NewProjectAudioProcessor& p) : processor(p) { startTimerHz(60); }
-    ~RollingScope() override { stopTimer(); }
-
-    void paint(juce::Graphics& g) override {
-        g.fillAll(juce::Colours::transparentBlack);
-
-        float w = (float)getWidth();
-        float h = (float)getHeight();
-        float midY = h * 0.5f;
-        float maxAmpHeight = midY - 15.0f;
-
-        // 1. Draw Min/Max Waveform (Professional Style)
-        g.setColour(lineColour);
-
-        int peakWriteIndex = processor.peakWritePos.load();
-        int totalPeaks = processor.peakBufferSize;
-
-        // Draw each vertical line for each pixel X
-        for (int x = 0; x < (int)w; ++x) {
-            // Map screen X to peak buffer index
-            int peakIndex = (peakWriteIndex - (int)w + x);
-            while (peakIndex < 0) peakIndex += totalPeaks;
-            peakIndex = peakIndex % totalPeaks;
-
-            auto& peak = processor.peakBuffer[peakIndex];
-
-            // Convert min/max to Y coordinates
-            float minY = midY - (peak.minValue * maxAmpHeight);
-            float maxY = midY - (peak.maxValue * maxAmpHeight);
-
-            // Clamp to visible area
-            minY = juce::jlimit(0.0f, h, minY);
-            maxY = juce::jlimit(0.0f, h, maxY);
-
-            // Draw vertical line from min to max (solid waveform effect)
-            if (std::abs(maxY - minY) < 1.0f) {
-                // For very small ranges, draw at least a 1px line for visibility
-                g.drawVerticalLine(x, midY - 0.5f, midY + 0.5f);
-            } else {
-                g.drawVerticalLine(x, maxY, minY);
-            }
-        }
-
-        // 2. 阈值线 (Threshold) & 梯形手柄
-        float thVal = juce::Decibels::decibelsToGain(threshDB);
-        threshY = midY - (thVal * maxAmpHeight);
-        
-        g.setColour(juce::Colours::white.withAlpha(0.9f));
-        g.drawHorizontalLine((int)threshY, 0.0f, w);
-        g.setColour(juce::Colours::white.withAlpha(0.1f));
-        g.drawHorizontalLine((int)(midY + (midY - threshY)), 0.0f, w); // Mirror
-
-        // 梯形
-        juce::Path thTrap;
-        thTrap.startNewSubPath(0, threshY);
-        thTrap.lineTo(25, threshY); thTrap.lineTo(20, threshY + 12); thTrap.lineTo(0, threshY + 12);
-        thTrap.closeSubPath();
-        g.setColour(juce::Colours::white.withAlpha(0.8f)); g.fillPath(thTrap);
-        g.setColour(juce::Colours::black); g.setFont(10.0f);
-        g.drawText("T", 2, (int)threshY, 20, 12, juce::Justification::centred);
-        
-        // 3. 上限线 (Ceiling) & 梯形手柄
-        float ceilVal = juce::Decibels::decibelsToGain(ceilingDB);
-        ceilingY = midY - (ceilVal * maxAmpHeight);
-        
-        g.setColour(juce::Colours::cyan.withAlpha(0.8f));
-        g.drawHorizontalLine((int)ceilingY, 0.0f, w);
-        
-        juce::Path ceTrap;
-        ceTrap.startNewSubPath(0, ceilingY);
-        ceTrap.lineTo(25, ceilingY); ceTrap.lineTo(20, ceilingY - 12); ceTrap.lineTo(0, ceilingY - 12);
-        ceTrap.closeSubPath();
-        g.setColour(juce::Colours::cyan.withAlpha(0.8f)); g.fillPath(ceTrap);
-        g.setColour(juce::Colours::black);
-        g.drawText("C", 2, (int)ceilingY - 12, 20, 12, juce::Justification::centred);
-    }
-    
-    void timerCallback() override { repaint(); }
-    void setColors(juce::Colour line) { lineColour = line; }
-    void setThresholds(float t, float c) { threshDB = t; ceilingDB = c; }
-    
-    float getThresholdY() const { return threshY; }
-    float getCeilingY() const { return ceilingY; }
-    float getScaleFactor() const { return getHeight() * 0.5f - 15.0f; }
-    float getMidY() const { return getHeight() * 0.5f; }
-
-private:
-    NewProjectAudioProcessor& processor;
-    juce::Colour lineColour = juce::Colours::orange;
-    float threshDB = -20.0f; float ceilingDB = 0.0f;
-    float threshY = 0.0f; float ceilingY = 0.0f;
-};
-
-// --- Editor ---
+#include "EnvelopeView.h"
 class NewProjectAudioProcessorEditor  : public juce::AudioProcessorEditor,
                                         public juce::Timer
 {
@@ -157,15 +59,13 @@ private:
     juce::TextButton expandButton { "" };
     bool showFFT = true;
 
-    RollingScope scopeComponent;
+    EnvelopeView envelopeView;
     float splitRatio = 0.5f;
-    juce::Rectangle<int> scopeArea, fftArea, dividerArea;
-    
-    // [核心修复] 确保这些变量在 .h 中声明了！
-    enum DragAction { None, Splitter, DragThreshold, DragCeiling };
+    juce::Rectangle<int> envelopeArea, fftArea, dividerArea;
+
+    // Splitter dragging
+    enum DragAction { None, Splitter };
     DragAction currentDragAction = None;
-    bool isDraggingSplitter = false;
-    bool isDraggingThresh = false;
 
     void setupKnob(juce::Slider& slider, const juce::String& id, std::unique_ptr<SliderAttachment>& attachment, const juce::String& suffix);
     void drawPixelArt(juce::Graphics& g, int x, int y, int scale, juce::Colour c, int type);

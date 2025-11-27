@@ -7,6 +7,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "EnvelopeView.h"  // For EnvelopeDataPoint
 
 class NewProjectAudioProcessor  : public juce::AudioProcessor
 {
@@ -61,6 +62,11 @@ public:
     std::array<PeakPair, peakBufferSize> peakBuffer;
     std::atomic<int> peakWritePos { 0 };
 
+    // Envelope Visualization Data (V18.5 - EnvelopeView)
+    static constexpr int envelopeBufferSize = 1024;
+    std::array<EnvelopeDataPoint, envelopeBufferSize> envelopeBuffer;
+    juce::AbstractFifo envelopeFifo { envelopeBufferSize };
+
     std::atomic<bool> isTriggeredUI { false };
     std::atomic<float> inputRMS { 0.0f };
     std::atomic<float> outputRMS { 0.0f };
@@ -84,6 +90,13 @@ private:
     int peakSampleCounter = 0;
     float currentMin = 0.0f;
     float currentMax = 0.0f;
+
+    // Envelope Peak Aggregation (for EnvelopeView)
+    static constexpr int envUpdateRate = 64;  // Aggregate every 64 samples
+    int envSampleCounter = 0;
+    float peakDetector = 0.0f;
+    float peakSynthesizer = 0.0f;
+    float peakOutput = 0.0f;
 
     float f_x1 = 0.0f, f_x2 = 0.0f;
     float f_y1 = 0.0f, f_y2 = 0.0f;
