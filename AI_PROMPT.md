@@ -1,7 +1,7 @@
 20251127.02 更新提示词如下
 # 🚀 任务：SPLENTA 视觉与交互重构 (V19.0 - Sniper & Cinematic Update)
 
-Claude，我是技术负责人。这是 V19.0 的最终执行指令。
+Claude，请仔细阅读这份文档更新后的指令。这份文档包含了新增需求的实现路径和技术决策。
 工程路径：/Users/MediaStorm/Desktop/NewProject/Source/￼
 
 ## 🎯 目标概述
