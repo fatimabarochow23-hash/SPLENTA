@@ -33,7 +33,7 @@ g.drawText("T", 5, (int)thresholdY + 2, 20, 12, juce::Justification::left, false
 # 🚀 任务：SPLENTA 视觉与交互重构 (V19.0 - Sniper & Cinematic Update)
 
 Claude，我是技术负责人。这是 V19.0 的最终执行指令。
-更新以本文档为唯一真理。
+工程路径：/Users/MediaStorm/Desktop/NewProject/Source/￼
 
 ## 🎯 目标概述
 我们需要解决 UI 割裂、滚动过快、交互困难等问题，并引入独特的 "Sniper Scope" 视觉反馈。
