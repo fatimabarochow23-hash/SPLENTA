@@ -39,35 +39,31 @@ void EnvelopeView::paint(juce::Graphics& g)
     // Calculate X step for each history point
     const float xStep = width / (float)(historySize - 1);
 
-    // === Draw Threshold and Ceiling Reference Lines ===
-    // Get parameter values (in dB)
+    // === Draw Threshold and Ceiling Reference Lines (Simplified) ===
     float thresholdDB = processor.apvts->getRawParameterValue("THRESHOLD")->load();
     float ceilingDB = processor.apvts->getRawParameterValue("CEILING")->load();
 
-    // Convert dB to linear amplitude
     float thresholdLinear = juce::Decibels::decibelsToGain(thresholdDB);
     float ceilingLinear = juce::Decibels::decibelsToGain(ceilingDB);
 
-    // Apply logarithmic mapping
     float thresholdVisual = mapToLogScale(thresholdLinear);
     float ceilingVisual = mapToLogScale(ceilingLinear);
 
-    // Calculate Y coordinates (flip because Y increases downward)
     float thresholdY = height * (1.0f - thresholdVisual);
     float ceilingY = height * (1.0f - ceilingVisual);
 
-    // Draw Ceiling line (solid, brighter)
-    g.setColour(referenceColour);
-    g.drawLine(0.0f, ceilingY, width, ceilingY, 1.5f);
-    g.setFont(12.0f);
-    g.drawText("C", 5, (int)ceilingY - 14, 20, 12, juce::Justification::left, false);
+    // Draw Ceiling line (thin solid, subtle label)
+    g.setColour(referenceColour.withAlpha(0.5f));
+    g.drawLine(0.0f, ceilingY, width, ceilingY, 1.0f);
+    g.setFont(10.0f);
+    g.setColour(referenceColour.withAlpha(0.6f));
+    g.drawText("CEIL", 5, (int)ceilingY - 12, 35, 10, juce::Justification::left, false);
 
-    // Draw Threshold line (dashed)
-    g.setColour(referenceColour.withAlpha(0.7f));
-    juce::Line<float> threshLine(0.0f, thresholdY, width, thresholdY);
-    float dashLengths[] = { 4.0f, 4.0f };
-    g.drawDashedLine(threshLine, dashLengths, 2, 1.0f);
-    g.drawText("T", 5, (int)thresholdY + 2, 20, 12, juce::Justification::left, false);
+    // Draw Threshold line (thin solid, subtle label)
+    g.setColour(referenceColour.withAlpha(0.5f));
+    g.drawLine(0.0f, thresholdY, width, thresholdY, 1.0f);
+    g.setColour(referenceColour.withAlpha(0.6f));
+    g.drawText("THR", 5, (int)thresholdY + 2, 30, 10, juce::Justification::left, false);
 
     // === Draw Detector Envelope (bottom layer, thicker) ===
     {
@@ -215,5 +211,22 @@ void EnvelopeView::updateFromProcessor()
         // Copy new data to the end of history buffer
         std::copy(tempBuffer.begin(), tempBuffer.end(),
                  historyBuffer.end() - numToRead);
+
+        // Apply decay to inactive waveforms
+        for (auto& point : historyBuffer)
+        {
+            point.detector *= 0.995f;
+            point.synthesizer *= 0.995f;
+            point.output *= 0.995f;
+        }
     }
+}
+
+void EnvelopeView::setThemeColors(juce::Colour accent, juce::Colour panel)
+{
+    backgroundColour = panel;
+    synthColour = accent;
+    detectorColour = accent.darker(0.4f).withSaturation(0.6f);
+    outputColour = accent.brighter(0.3f);
+    referenceColour = accent.withRotatedHue(0.5f).withSaturation(0.7f);
 }

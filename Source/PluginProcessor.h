@@ -93,7 +93,7 @@ private:
     float currentMax = 0.0f;
 
     // Envelope Peak Aggregation (for EnvelopeView)
-    static constexpr int envUpdateRate = 64;  // Aggregate every 64 samples
+    static constexpr int envUpdateRate = 256;  // Aggregate every 256 samples (~187Hz at 48kHz)
     int envSampleCounter = 0;
     float peakDetector = 0.0f;
     float peakSynthesizer = 0.0f;

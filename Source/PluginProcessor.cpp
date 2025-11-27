@@ -297,7 +297,14 @@ void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
 
                  // Additive Mix: DuckedDry + Wet * Mix
                  float mixed = (filteredDry * currentDuckGain) + (finalWet * mixPct);
-                 if (useSoftClip) mixed = std::tanh(mixed);
+
+                 // Hard limiting at -0.01dB instead of soft clipping
+                 const float hardLimitThreshold = juce::Decibels::decibelsToGain(-0.01f);
+                 if (useSoftClip) {
+                     if (mixed > hardLimitThreshold) mixed = hardLimitThreshold;
+                     else if (mixed < -hardLimitThreshold) mixed = -hardLimitThreshold;
+                 }
+
                  channelData[sample] = mixed;
 
                  // === Envelope Peak Aggregation (for EnvelopeView) ===
@@ -343,13 +350,18 @@ void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
         }
     }
     
-    // AGM
+    // AGM with +6dB max constraint and -60dB safety threshold
     float currentOutputRMS = buffer.getRMSLevel(0, 0, numSamples);
     outputRMS = currentOutputRMS;
     if (agmParam->load() > 0.5f) {
         float target = 1.0f;
-        if (currentOutputRMS > 0.0001f && currentInputRMS > 0.0001f)
-            target = juce::jlimit(0.1f, 4.0f, currentInputRMS / currentOutputRMS);
+        const float minThreshold = juce::Decibels::decibelsToGain(-60.0f);
+        const float maxGain = juce::Decibels::decibelsToGain(6.0f);
+
+        if (currentOutputRMS > minThreshold && currentInputRMS > minThreshold) {
+            float computedGain = currentInputRMS / currentOutputRMS;
+            target = juce::jlimit(0.1f, maxGain, computedGain);
+        }
         agmGain.setTargetValue(target);
     } else { agmGain.setTargetValue(1.0f); }
     agmGain.applyGain(buffer, buffer.getNumSamples());

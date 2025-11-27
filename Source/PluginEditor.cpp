@@ -109,6 +109,9 @@ void NewProjectAudioProcessorEditor::updateColors()
         case 4: c_accent=juce::Colour(0xffccff00); c_panel=juce::Colour(0xff101210); break;
     }
 
+    // Update EnvelopeView theme colors dynamically
+    envelopeView.setThemeColors(c_accent, c_panel);
+
     auto apply = [&](juce::Slider& s) {
         s.setColour(juce::Slider::thumbColourId, c_accent);
         s.setColour(juce::Slider::rotarySliderFillColourId, c_accent);
@@ -118,7 +121,7 @@ void NewProjectAudioProcessorEditor::updateColors()
     apply(startFreqSlider); apply(peakFreqSlider); apply(satSlider); apply(noiseSlider);
     apply(pAttSlider); apply(pDecSlider); apply(aAttSlider); apply(aDecSlider);
     apply(duckSlider); apply(duckAttSlider); apply(duckDecSlider); apply(wetSlider); apply(drySlider); apply(mixSlider);
-    
+
     auto applyBtn = [&](juce::TextButton& b) {
         b.setColour(juce::TextButton::buttonOnColourId, c_accent);
         b.setColour(juce::TextButton::textColourOnId, juce::Colours::black);
@@ -245,19 +248,66 @@ void NewProjectAudioProcessorEditor::paint (juce::Graphics& g)
         g.setColour(c_accent.withAlpha(0.3f)); g.fillPath(fftPath);
         g.setColour(c_accent); g.strokePath(fftPath, juce::PathStrokeType(1.5f));
         g.restoreState();
-        
+
         g.setColour(c_accent.withAlpha(0.5f)); g.fillRect(dividerArea);
         if (dividerArea.contains(getMouseXYRelative())) g.setColour(juce::Colours::white);
-        
+
         int cx = expandButton.getX() + expandButton.getWidth()/2;
         int cy = expandButton.getY() + expandButton.getHeight()/2;
+
+        // Circular expand button background
+        g.setColour(c_panel.brighter(0.3f));
+        g.fillEllipse(expandButton.getX(), expandButton.getY(), 24, 24);
+
         g.setColour(c_text);
         juce::Path arrow;
         arrow.startNewSubPath(cx-3, cy-5); arrow.lineTo(cx+2, cy); arrow.lineTo(cx-3, cy+5); // >
         g.strokePath(arrow, juce::PathStrokeType(2.0f));
     } else {
+        // === Sniper Scope Visualization (When FFT Collapsed) ===
+        int scopeX = envelopeArea.getRight() + 20;
+        int scopeY = envelopeArea.getY() + envelopeArea.getHeight() / 2;
+
+        // Get Release parameter value (DET_REL)
+        float releaseMS = audioProcessor.apvts->getRawParameterValue("DET_REL")->load();
+
+        // Map Release time to bracket gap width (1ms -> 10px, 500ms -> 100px)
+        float gapWidth = juce::jmap(releaseMS, 1.0f, 500.0f, 10.0f, 100.0f);
+
+        g.setColour(c_accent);
+        g.setFont(18.0f);
+
+        // Draw parametric bracket visualization
+        int bracketHeight = 40;
+        int leftBracketX = scopeX - (int)(gapWidth / 2);
+        int rightBracketX = scopeX + (int)(gapWidth / 2);
+
+        // Left bracket: (
+        juce::Path leftBracket;
+        leftBracket.startNewSubPath(leftBracketX + 8, scopeY - bracketHeight/2);
+        leftBracket.quadraticTo(leftBracketX, scopeY, leftBracketX + 8, scopeY + bracketHeight/2);
+        g.strokePath(leftBracket, juce::PathStrokeType(2.5f, juce::PathStrokeType::curved));
+
+        // Right bracket: )
+        juce::Path rightBracket;
+        rightBracket.startNewSubPath(rightBracketX - 8, scopeY - bracketHeight/2);
+        rightBracket.quadraticTo(rightBracketX, scopeY, rightBracketX - 8, scopeY + bracketHeight/2);
+        g.strokePath(rightBracket, juce::PathStrokeType(2.5f, juce::PathStrokeType::curved));
+
+        // Display Release value
+        g.setFont(12.0f);
+        g.setColour(c_text.withAlpha(0.8f));
+        g.drawText("REL: " + juce::String((int)releaseMS) + "ms",
+                   scopeX - 40, scopeY + bracketHeight/2 + 10, 80, 20,
+                   juce::Justification::centred);
+
         int cx = expandButton.getX() + expandButton.getWidth()/2;
         int cy = expandButton.getY() + expandButton.getHeight()/2;
+
+        // Circular expand button background
+        g.setColour(c_panel.brighter(0.3f));
+        g.fillEllipse(expandButton.getX(), expandButton.getY(), 24, 24);
+
         g.setColour(c_text);
         juce::Path arrow;
         arrow.startNewSubPath(cx+2, cy-5); arrow.lineTo(cx-3, cy); arrow.lineTo(cx+2, cy+5); // <
@@ -301,7 +351,7 @@ void NewProjectAudioProcessorEditor::resized()
     presetBox.setBounds(130, 5, 150, 20);
     int totalW = 960 - 20;
     int splitX = 10 + (int)(totalW * (showFFT ? splitRatio : 1.0f));
-    expandButton.setBounds(splitX - 10, 100, 20, 30);
+    expandButton.setBounds(splitX - 12, 98, 24, 24); // Circular 24x24px
     agmButton.setBounds(860, 250, 80, 25); clipButton.setBounds(860, 290, 80, 25);
     threshSlider.setBounds (20, startY, knobSize, knobSize); ceilingSlider.setBounds(100, startY, knobSize, knobSize); relSlider.setBounds(20, startY + gap, knobSize, knobSize); waitSlider.setBounds(100, startY + gap, knobSize, knobSize); freqSlider.setBounds(20, startY + gap*2, knobSize, knobSize); qSlider.setBounds(100, startY + gap*2, knobSize, knobSize); auditionButton.setBounds(20, startY + gap*3, 40, 25);
     startFreqSlider.setBounds (20 + colW, startY, knobSize, knobSize); peakFreqSlider.setBounds(100 + colW, startY, knobSize, knobSize); satSlider.setBounds(20 + colW, startY + gap, knobSize, knobSize); noiseSlider.setBounds(100 + colW, startY + gap, knobSize, knobSize); shapeBox.setBounds(20 + colW, startY + gap*2, 150, 25);

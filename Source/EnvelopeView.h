@@ -35,6 +35,9 @@ public:
     // Read new data from processor's FIFO and update history
     void updateFromProcessor();
 
+    // Dynamic theme color integration
+    void setThemeColors(juce::Colour accent, juce::Colour panel);
+
 private:
     NewProjectAudioProcessor& processor;
 
@@ -54,12 +57,12 @@ private:
         return std::log(1.0f + logScaleK * linearValue) * invLog1pk;
     }
 
-    // Color scheme (ARC Rust theme)
-    const juce::Colour backgroundColour { 0xFF1A0E0A };
-    const juce::Colour detectorColour   { 0xFFCC7733 };
-    const juce::Colour synthColour      { 0xFFFF8C42 };
-    const juce::Colour outputColour     { 0xFFFFD66B };
-    const juce::Colour referenceColour  { 0xFFA0E6E3 }; // Teal for Threshold/Ceiling lines
+    // Dynamic color scheme (updated via setThemeColors)
+    juce::Colour backgroundColour { 0xFF1A0E0A };
+    juce::Colour detectorColour   { 0xFFCC7733 };
+    juce::Colour synthColour      { 0xFFFF8C42 };
+    juce::Colour outputColour     { 0xFFFFD66B };
+    juce::Colour referenceColour  { 0xFFA0E6E3 };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(EnvelopeView)
 };
