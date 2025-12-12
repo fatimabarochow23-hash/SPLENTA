@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    EnvelopeView.h (SPLENTA V18.5 - 20251127.01)
-    Dynamic Envelope Network Visualization Component
+    EnvelopeView.h (SPLENTA V18.6 - 20251212.01)
+    Extended Temporal Window & Dynamic Zoom Visualization
   ==============================================================================
 */
 
@@ -41,8 +41,8 @@ public:
 private:
     NewProjectAudioProcessor& processor;
 
-    // Fixed history buffer (512 points)
-    static constexpr int historySize = 512;
+    // Extended history buffer (2048 points for longer temporal window)
+    static constexpr int historySize = 2048;
     std::array<EnvelopeDataPoint, historySize> historyBuffer;
 
     // Logarithmic scaling constants for ~60dB dynamic range
@@ -63,6 +63,10 @@ private:
     juce::Colour synthColour      { 0xFFFF8C42 };
     juce::Colour outputColour     { 0xFFFFD66B };
     juce::Colour referenceColour  { 0xFFA0E6E3 };
+
+    // Scroll-to-silence tracking
+    juce::Time lastUpdateTime;
+    bool hasReceivedData = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(EnvelopeView)
 };

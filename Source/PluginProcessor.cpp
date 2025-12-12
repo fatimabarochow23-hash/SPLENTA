@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    PluginProcessor.cpp (SPLENTA V18.5 - 20251127.01)
-    Dynamic Envelope Visualization System
+    PluginProcessor.cpp (SPLENTA V18.6 - 20251212.01)
+    Temporal Window Optimization & Dynamic Scaling
   ==============================================================================
 */
 
@@ -94,6 +94,7 @@ void NewProjectAudioProcessor::changeProgramName (int index, const juce::String&
 void NewProjectAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     currentSampleRate = sampleRate;
+    atomicSampleRate.store(sampleRate);  // Store atomic sample rate
     updateFilterCoefficients(*freqParam, *qParam);
     updateEnvelopeIncrements(*pAttParam, *pDecParam, *aAttParam, *aDecParam, *duckAttParam, *duckDecParam, *detReleaseParam);
     
@@ -322,22 +323,30 @@ void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
 
                      envSampleCounter++;
 
-                     // Every 64 samples, push aggregated peak to FIFO
+                     // Every 128 samples, push aggregated peak to FIFO (unless frozen)
                      if (envSampleCounter >= envUpdateRate)
                      {
-                         EnvelopeDataPoint dataPoint;
-                         dataPoint.detector = peakDetector;
-                         dataPoint.synthesizer = peakSynthesizer;
-                         dataPoint.output = peakOutput;
+                         if (!isFrozen.load())
+                         {
+                             EnvelopeDataPoint dataPoint;
+                             dataPoint.detector = peakDetector;
+                             dataPoint.synthesizer = peakSynthesizer;
+                             dataPoint.output = peakOutput;
 
-                         // Write to FIFO (lock-free)
-                         int start1, size1, start2, size2;
-                         envelopeFifo.prepareToWrite(1, start1, size1, start2, size2);
+                             // Write to FIFO (lock-free)
+                             int start1, size1, start2, size2;
+                             envelopeFifo.prepareToWrite(1, start1, size1, start2, size2);
 
-                         if (size1 > 0)
-                             envelopeBuffer[start1] = dataPoint;
+                             if (size1 > 0)
+                                 envelopeBuffer[start1] = dataPoint;
 
-                         envelopeFifo.finishedWrite(size1);
+                             envelopeFifo.finishedWrite(size1);
+                         }
+                         else
+                         {
+                             // When frozen, clear FIFO to prevent accumulation
+                             envelopeFifo.reset();
+                         }
 
                          // Reset for next window
                          envSampleCounter = 0;
@@ -365,6 +374,28 @@ void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
         agmGain.setTargetValue(target);
     } else { agmGain.setTargetValue(1.0f); }
     agmGain.applyGain(buffer, buffer.getNumSamples());
+
+    // Soft Clipper: -0.01dB limiting with +0.01dB makeup gain
+    const float limitThreshold = juce::Decibels::decibelsToGain(-0.01f);
+    const float makeupGain = juce::Decibels::decibelsToGain(0.01f);
+
+    for (int ch = 0; ch < totalNumOutputChannels; ++ch)
+    {
+        auto* channelData = buffer.getWritePointer(ch);
+        for (int sample = 0; sample < numSamples; ++sample)
+        {
+            float value = channelData[sample];
+
+            // Apply limiting
+            if (value > limitThreshold)
+                value = limitThreshold;
+            else if (value < -limitThreshold)
+                value = -limitThreshold;
+
+            // Apply makeup gain
+            channelData[sample] = value * makeupGain;
+        }
+    }
 }
 
 bool NewProjectAudioProcessor::hasEditor() const { return true; }

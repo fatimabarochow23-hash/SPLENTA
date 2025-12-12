@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    EnvelopeView.cpp (SPLENTA V18.5 - 20251127.01)
-    Dynamic Envelope Network Visualization Component
+    EnvelopeView.cpp (SPLENTA V18.6 - 20251212.01)
+    Extended Temporal Window & Dynamic Zoom Visualization
   ==============================================================================
 */
 
@@ -36,8 +36,33 @@ void EnvelopeView::paint(juce::Graphics& g)
     // Fill background
     g.fillAll(backgroundColour);
 
-    // Calculate X step for each history point
-    const float xStep = width / (float)(historySize - 1);
+    // === Dynamic Zoom Scaling (Module 3.2) ===
+    int displayStartIndex = 0;
+    int displayEndIndex = historySize;
+    float xStep = width / (float)(historySize - 1);
+
+    if (processor.isDynamicZoomActive.load())
+    {
+        // Get Release parameter and calculate zoom range
+        float releaseMS = processor.apvts->getRawParameterValue("DET_REL")->load();
+
+        // Calculate display window based on Release time (with 1.2x context)
+        double sampleRate = processor.atomicSampleRate.load();
+        int updateRate = 128;
+        float releaseSamples = (releaseMS / 1000.0f) * sampleRate;
+        int releasePoints = static_cast<int>(releaseSamples / updateRate);
+
+        // Apply 1.2x context multiplier
+        int displayPoints = static_cast<int>(releasePoints * 1.2f);
+        displayPoints = juce::jlimit(100, historySize, displayPoints);
+
+        // Show most recent displayPoints
+        displayStartIndex = historySize - displayPoints;
+        displayEndIndex = historySize;
+
+        // Recalculate xStep for zoomed view
+        xStep = width / (float)(displayPoints - 1);
+    }
 
     // === Draw Threshold and Ceiling Reference Lines (Simplified) ===
     float thresholdDB = processor.apvts->getRawParameterValue("THRESHOLD")->load();
@@ -70,9 +95,9 @@ void EnvelopeView::paint(juce::Graphics& g)
         juce::Path detectorPath;
         bool started = false;
 
-        for (int i = 0; i < historySize; ++i)
+        for (int i = displayStartIndex; i < displayEndIndex; ++i)
         {
-            float x = i * xStep;
+            float x = (i - displayStartIndex) * xStep;
             float logValue = mapToLogScale(historyBuffer[i].detector);
             float y = height * (1.0f - logValue);
 
@@ -96,9 +121,9 @@ void EnvelopeView::paint(juce::Graphics& g)
         juce::Path synthPath;
         synthPath.startNewSubPath(0.0f, height);
 
-        for (int i = 0; i < historySize; ++i)
+        for (int i = displayStartIndex; i < displayEndIndex; ++i)
         {
-            float x = i * xStep;
+            float x = (i - displayStartIndex) * xStep;
             float logValue = mapToLogScale(historyBuffer[i].synthesizer);
             float y = height * (1.0f - logValue);
             synthPath.lineTo(x, y);
@@ -114,9 +139,9 @@ void EnvelopeView::paint(juce::Graphics& g)
         // Stroke the top edge
         juce::Path synthStrokePath;
         bool started = false;
-        for (int i = 0; i < historySize; ++i)
+        for (int i = displayStartIndex; i < displayEndIndex; ++i)
         {
-            float x = i * xStep;
+            float x = (i - displayStartIndex) * xStep;
             float logValue = mapToLogScale(historyBuffer[i].synthesizer);
             float y = height * (1.0f - logValue);
 
@@ -140,9 +165,9 @@ void EnvelopeView::paint(juce::Graphics& g)
         juce::Path outputPath;
         bool started = false;
 
-        for (int i = 0; i < historySize; ++i)
+        for (int i = displayStartIndex; i < displayEndIndex; ++i)
         {
-            float x = i * xStep;
+            float x = (i - displayStartIndex) * xStep;
             float logValue = mapToLogScale(historyBuffer[i].output);
             float y = height * (1.0f - logValue);
 
@@ -203,7 +228,6 @@ void EnvelopeView::updateFromProcessor()
         processor.envelopeFifo.finishedRead(size1 + size2);
 
         // Efficient scrolling using std::rotate
-        // Rotate left by numToRead positions, then insert new data at the end
         std::rotate(historyBuffer.begin(),
                    historyBuffer.begin() + numToRead,
                    historyBuffer.end());
@@ -212,12 +236,43 @@ void EnvelopeView::updateFromProcessor()
         std::copy(tempBuffer.begin(), tempBuffer.end(),
                  historyBuffer.end() - numToRead);
 
-        // Apply decay to inactive waveforms
-        for (auto& point : historyBuffer)
+        // Update time tracking
+        lastUpdateTime = juce::Time::getCurrentTime();
+        hasReceivedData = true;
+    }
+    else if (hasReceivedData && !processor.isFrozen.load())
+    {
+        // Scroll-to-silence logic: inject zero-value points when audio stops
+        auto currentTime = juce::Time::getCurrentTime();
+        auto elapsedMs = currentTime.toMilliseconds() - lastUpdateTime.toMilliseconds();
+
+        // Calculate how many zero points to inject based on elapsed time
+        double sampleRate = processor.atomicSampleRate.load();
+        int updateRate = 128;  // envUpdateRate
+        double pointsPerSecond = sampleRate / updateRate;
+        int zeroPointsToInject = static_cast<int>((elapsedMs / 1000.0) * pointsPerSecond);
+
+        // Limit to reasonable amount
+        zeroPointsToInject = juce::jmin(zeroPointsToInject, 10);
+
+        if (zeroPointsToInject > 0)
         {
-            point.detector *= 0.995f;
-            point.synthesizer *= 0.995f;
-            point.output *= 0.995f;
+            // Create zero-value data points
+            EnvelopeDataPoint zeroPoint;
+            zeroPoint.detector = 0.0f;
+            zeroPoint.synthesizer = 0.0f;
+            zeroPoint.output = 0.0f;
+
+            // Inject zero points to simulate natural fadeout
+            std::rotate(historyBuffer.begin(),
+                       historyBuffer.begin() + zeroPointsToInject,
+                       historyBuffer.end());
+
+            // Fill with zeros
+            for (int i = 0; i < zeroPointsToInject; ++i)
+                historyBuffer[historySize - zeroPointsToInject + i] = zeroPoint;
+
+            lastUpdateTime = currentTime;
         }
     }
 }

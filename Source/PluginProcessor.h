@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    PluginProcessor.h (SPLENTA V18.5 - 20251127.01)
-    Dynamic Envelope Visualization System
+    PluginProcessor.h (SPLENTA V18.6 - 20251212.01)
+    Temporal Window Optimization & Dynamic Scaling
   ==============================================================================
 */
 
@@ -63,14 +63,17 @@ public:
     std::array<PeakPair, peakBufferSize> peakBuffer;
     std::atomic<int> peakWritePos { 0 };
 
-    // Envelope Visualization Data (V18.5 - EnvelopeView)
-    static constexpr int envelopeBufferSize = 1024;
+    // Envelope Visualization Data (V18.6 - Extended Buffer)
+    static constexpr int envelopeBufferSize = 4096;
     std::array<EnvelopeDataPoint, envelopeBufferSize> envelopeBuffer;
     juce::AbstractFifo envelopeFifo { envelopeBufferSize };
 
     std::atomic<bool> isTriggeredUI { false };
+    std::atomic<bool> isFrozen { false };  // Freeze functionality
+    std::atomic<bool> isDynamicZoomActive { false };  // Dynamic zoom state
     std::atomic<float> inputRMS { 0.0f };
     std::atomic<float> outputRMS { 0.0f };
+    std::atomic<double> atomicSampleRate { 48000.0 };  // Atomic sample rate storage
     
     // FFT Data
     enum { fftOrder = 11, fftSize = 1 << fftOrder };
@@ -92,8 +95,8 @@ private:
     float currentMin = 0.0f;
     float currentMax = 0.0f;
 
-    // Envelope Peak Aggregation (for EnvelopeView)
-    static constexpr int envUpdateRate = 256;  // Aggregate every 256 samples (~187Hz at 48kHz)
+    // Envelope Peak Aggregation (V18.6 - Optimized Update Rate)
+    static constexpr int envUpdateRate = 128;  // Aggregate every 128 samples (balanced performance)
     int envSampleCounter = 0;
     float peakDetector = 0.0f;
     float peakSynthesizer = 0.0f;
