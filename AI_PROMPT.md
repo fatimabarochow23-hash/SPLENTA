@@ -1,3 +1,55 @@
+Claude，你将接手一个正在进行的 JUCE C++ 音频插件开发项目。请严格按照以下定义的标准操作程序 (SOP) 初始化环境并恢复工作流。
+
+1. 项目背景与环境
+项目名称：SPLENTA (Enforcer 风格低频增强插件)
+
+技术栈：JUCE, C++, Xcode。
+
+本地工程路径：/Users/MediaStorm/Desktop/NewProject
+
+GitHub 仓库：https://github.com/fatimabarochow23-hash/SPLENTA.git
+
+2. 你的角色与标准操作程序 (SOP)
+你的角色是实现工程师。技术负责人 (Gemini Ultra) 提供技术规范，你负责实现。
+
+我们的工作流基于一个核心指令文件进行迭代：
+
+指令来源 (Source of Truth)：所有任务需求和修改指令都记录在 AI_PROMPT.md 文件中。
+
+指令链接：https://github.com/fatimabarochow23-hash/SPLENTA/blob/main/AI_PROMPT.md
+
+你的工作流程 (The Loop)：
+
+同步 (Sync)：确保本地仓库是最新的。
+
+读取指令 (Read)：阅读并深入理解最新的 AI_PROMPT.md 内容。
+
+分析与执行 (Execute)：分析本地代码库，并根据 AI_PROMPT.md 的要求，直接在本地修改源代码文件。
+
+提交与推送 (Commit)：完成修改后，将所有更改 Commit 并 Push 回 GitHub 仓库。
+
+3. 版本号与提交规范
+所有提交必须严格遵守以下版本号格式：V[Major].[Minor] - YYYYMMDD.[Build]
+
+示例（以今天 2025年12月12日 第一次修改 为例）：V18.6 - 20251212.01
+
+规则：如果同一天有多次提交，则递增最后的 Build 号（.01, .02, .03...）。你必须检查最近的 Commit 历史来确定正确的下一个版本号。
+
+要求：你还必须更新所有被修改的源文件头部的版本号注释，使其与 Commit Message 一致。请忽略上一次V19.0的错误注释。
+
+4. 立即执行动作
+请立即执行以下步骤以恢复工作：
+
+验证访问：确认你可以访问本地路径 /Users/MediaStorm/Desktop/NewProject。
+
+同步仓库：执行 cd /Users/MediaStorm/Desktop/NewProject && git pull origin main。
+
+执行当前任务：读取并执行 AI_PROMPT.md 中定义的最新任务。
+
+报告：完成任务并推送后，请报告执行结果。
+
+
+以下为任务板块：
 🚀 任务：V18.6 全面升级 - 高级可视化、性能与 DSP 优化Claude，本次迭代(V18.6)包含大量关键性修改和优化。请严格按照以下自定义指令执行。工程路径：/Users/MediaStorm/Desktop/NewProject/Source/￼一模块：时间窗口重构与性能优化解决滚动速度过快问题，将默认时间窗口漂移约6秒。同时实现精确的滚动归零逻辑。【1.1】参数调整与采样率同步1. PluginProcessor.h修改:• EnvBufferSize：到增加4096。• EnvUpdateRate：从64增加到128(平衡性能和时间跨度)。• 添加原子指标存储采样率：std::atomic<double> currentSampleRate { 44100.0 };• 公共添加方法double getSampleRate() const { return currentSampleRate.load(); }。2. PluginProcessor.cpp修改:• 在prepareToPlay中更新采样率：currentSampleRate.store(sampleRate);。• 保证构造函数中envBuffer初始化大小正确。3. EnvelopeView.h修改:• HistorySize：从512增加到2048。• 添加元件指标juce::int64 lastCallbackTime = 0;用于精确计时。【1.2】实现冻结功能与精确滚动归零（Scroll Away）实现当声音停止时，波形自然滚动消失的逻辑。1. PluginEditor：• 添加一个juce::ToggleButton，命名为freezeButton，文本“Freeze”。放置在可视化区域的右上角。• 点击按钮时更新状态，并调用envelopeView.setFrozen(...)（重要：也必须调用 FFT 视图的响应调用方法）。2. EnvelopeView.h：• 添加std::atomic<bool> isFrozen { false };和setFrozen(bool)方法。3. EnvelopeView.cpp::timerCallback（核心逻辑重构）：C++￼void EnvelopeView::timerCallback()
 {
     if (isFrozen.load())
