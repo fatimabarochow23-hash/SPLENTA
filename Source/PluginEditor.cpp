@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    PluginEditor.cpp (SPLENTA V18.6 - 20251216.05)
-    Batch 03: UI Reorganization + Value Show-on-Interaction
+    PluginEditor.cpp (SPLENTA V18.6 - 20251216.06)
+    Batch 04: Energy Topology (Mobius Visualizer Integration)
   ==============================================================================
 */
 
@@ -74,6 +74,7 @@ NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor (NewProjectAudioP
     clipAtt.reset(new ButtonAttachment(*audioProcessor.apvts, "SOFT_CLIP", clipButton));
 
     addAndMakeVisible(envelopeView);
+    addAndMakeVisible(energyTopology);
 
     // Apply custom LookAndFeel
     setLookAndFeel(&stealthLnF);
@@ -122,6 +123,9 @@ void NewProjectAudioProcessorEditor::updateColors()
 
     // Update EnvelopeView colors
     envelopeView.setThemeColors(palette.accent, palette.panel900);
+
+    // Update EnergyTopology colors
+    energyTopology.setPalette(palette);
 
     // Apply colors to sliders (use accent with alpha from map for text box color)
     auto apply = [&](juce::Slider& s) {
@@ -232,12 +236,9 @@ void NewProjectAudioProcessorEditor::paint (juce::Graphics& g)
     g.setColour (c_panel); g.fillRect (envelopeArea);
     g.setColour (c_accent.withAlpha(0.2f)); g.drawRect (envelopeArea);
 
-    // Energy Topology panel (placeholder)
+    // Energy Topology panel background
     g.setColour (c_panel); g.fillRect (topologyArea);
     g.setColour (c_accent.withAlpha(0.2f)); g.drawRect (topologyArea);
-    g.setColour (c_text.withAlpha(0.6f));
-    g.setFont (juce::FontOptions(11.0f, juce::Font::bold));
-    g.drawText ("ENERGY TOPOLOGY", topologyArea.getX() + 10, topologyArea.getY() + 5, 200, 15, juce::Justification::left);
 
     // Trigger icon
     if (audioProcessor.isTriggeredUI) {
@@ -280,6 +281,13 @@ void NewProjectAudioProcessorEditor::resized()
     themeSelector.setBounds(790, 5, 150, 24);
     presetBox.setBounds(130, 5, 150, 20);
     agmButton.setBounds(860, 250, 80, 25); clipButton.setBounds(860, 290, 80, 25);
+
+    // Top visualization areas (match paint() calculation)
+    int startX = 10; int topY = 30; int height = 200;
+    int envelopeWidth = 470;
+    int topologyWidth = 460;
+    energyTopology.setBounds(startX + envelopeWidth + 10, topY, topologyWidth, height);
+
     threshSlider.setBounds (20, startY, knobSize, knobSize); ceilingSlider.setBounds(100, startY, knobSize, knobSize); relSlider.setBounds(20, startY + gap, knobSize, knobSize); waitSlider.setBounds(100, startY + gap, knobSize, knobSize); freqSlider.setBounds(20, startY + gap*2, knobSize, knobSize); qSlider.setBounds(100, startY + gap*2, knobSize, knobSize); auditionButton.setBounds(20, startY + gap*3, 40, 25);
     startFreqSlider.setBounds (20 + colW, startY, knobSize, knobSize); peakFreqSlider.setBounds(100 + colW, startY, knobSize, knobSize); satSlider.setBounds(20 + colW, startY + gap, knobSize, knobSize); noiseSlider.setBounds(100 + colW, startY + gap, knobSize, knobSize); shapeBox.setBounds(20 + colW, startY + gap*2, 150, 25);
     pAttSlider.setBounds (20 + colW*2, startY, knobSize, knobSize); pDecSlider.setBounds(100 + colW*2, startY, knobSize, knobSize); aAttSlider.setBounds(20 + colW*2, startY + gap, knobSize, knobSize); aDecSlider.setBounds(100 + colW*2, startY + gap, knobSize, knobSize);

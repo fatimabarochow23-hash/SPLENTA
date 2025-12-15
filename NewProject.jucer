@@ -15,12 +15,16 @@
     <FILE id="egU94Z" name="EnvelopeView.cpp" compile="1" resource="0"
           file="Source/EnvelopeView.cpp"/>
     <FILE id="kL5fQ8" name="EnvelopeView.h" compile="0" resource="0" file="Source/EnvelopeView.h"/>
+    <FILE id="eToCp1" name="EnergyTopologyComponent.cpp" compile="1" resource="0"
+          file="Source/EnergyTopologyComponent.cpp"/>
+    <FILE id="eToCp2" name="EnergyTopologyComponent.h" compile="0" resource="0"
+          file="Source/EnergyTopologyComponent.h"/>
+    <FILE id="oFGYh8" name="StealthLookAndFeel.cpp" compile="1" resource="0"
+          file="Source/StealthLookAndFeel.cpp"/>
+    <FILE id="fQ9a5W" name="StealthLookAndFeel.h" compile="0" resource="0"
+          file="Source/StealthLookAndFeel.h"/>
     <FILE id="rIIlRv" name="Theme.h" compile="0" resource="0" file="Source/Theme.h"/>
     <FILE id="zWZxBH" name="ThemeSelector.h" compile="0" resource="0" file="Source/ThemeSelector.h"/>
-    <FILE id="sLaF01" name="StealthLookAndFeel.cpp" compile="1" resource="0"
-          file="Source/StealthLookAndFeel.cpp"/>
-    <FILE id="sLaF02" name="StealthLookAndFeel.h" compile="0" resource="0"
-          file="Source/StealthLookAndFeel.h"/>
   </MAINGROUP>
   <MODULES>
     <MODULE id="juce_analytics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>

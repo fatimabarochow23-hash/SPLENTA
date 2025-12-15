@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    PluginEditor.h (SPLENTA V18.6 - 20251216.05)
-    Batch 03: UI Reorganization + Value Show-on-Interaction
+    PluginEditor.h (SPLENTA V18.6 - 20251216.06)
+    Batch 04: Energy Topology (Mobius Visualizer Integration)
   ==============================================================================
 */
 
@@ -13,6 +13,7 @@
 #include "ThemeSelector.h"
 #include "Theme.h"
 #include "StealthLookAndFeel.h"
+#include "EnergyTopologyComponent.h"
 
 class NewProjectAudioProcessorEditor  : public juce::AudioProcessorEditor,
                                         public juce::Timer
@@ -60,6 +61,7 @@ private:
     std::unique_ptr<ButtonAttachment> auditionAtt;
 
     EnvelopeView envelopeView;
+    EnergyTopologyComponent energyTopology;
     juce::Rectangle<int> envelopeArea, topologyArea;
 
     void setupKnob(juce::Slider& slider, const juce::String& id, std::unique_ptr<SliderAttachment>& attachment, const juce::String& suffix);
