@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    PluginEditor.cpp (SPLENTA V18.6 - 20251215.02)
-    Theme System Integration & UI Refinement
+    PluginEditor.cpp (SPLENTA V18.6 - 20251215.03)
+    Theme System: External Change Synchronization
   ==============================================================================
 */
 
@@ -52,7 +52,6 @@ NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor (NewProjectAudioP
     themeSelector.onThemeChanged = [this](int index) {
         audioProcessor.setParameterValue("THEME", (float)index);
         updateColors();
-        repaint();
     };
 
     addAndMakeVisible(presetBox);
@@ -184,6 +183,16 @@ void NewProjectAudioProcessorEditor::drawPixelHeadphone(juce::Graphics& g, int x
 
 void NewProjectAudioProcessorEditor::timerCallback()
 {
+    // Theme change detection (for host automation / state restore)
+    int currentThemeIndex = juce::roundToInt(audioProcessor.apvts->getRawParameterValue("THEME")->load());
+    currentThemeIndex = juce::jlimit(0, 4, currentThemeIndex);
+
+    if (currentThemeIndex != lastThemeIndex)
+    {
+        lastThemeIndex = currentThemeIndex;
+        updateColors();
+    }
+
     if (audioProcessor.nextFFTBlockReady) {
         audioProcessor.forwardFFT.performFrequencyOnlyForwardTransform (audioProcessor.fftData.data());
         audioProcessor.nextFFTBlockReady = false;

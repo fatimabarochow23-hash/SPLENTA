@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    PluginEditor.h (SPLENTA V18.6 - 20251215.02)
-    Theme System Integration & UI Refinement
+    PluginEditor.h (SPLENTA V18.6 - 20251215.03)
+    Theme System: External Change Synchronization
   ==============================================================================
 */
 
@@ -77,6 +77,9 @@ private:
     void setupKnob(juce::Slider& slider, const juce::String& id, std::unique_ptr<SliderAttachment>& attachment, const juce::String& suffix);
     void drawPixelArt(juce::Graphics& g, int x, int y, int scale, juce::Colour c, int type);
     void drawPixelHeadphone(juce::Graphics& g, int x, int y, int scale, juce::Colour c);
+
+    // Theme change detection
+    int lastThemeIndex = -1;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (NewProjectAudioProcessorEditor)
 };
