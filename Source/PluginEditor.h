@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    PluginEditor.h (SPLENTA V18.6 - 20251215.04)
-    Custom LookAndFeel: Knob & Fader Interactive Feedback
+    PluginEditor.h (SPLENTA V18.6 - 20251216.05)
+    Batch 03: UI Reorganization + Value Show-on-Interaction
   ==============================================================================
 */
 
@@ -25,11 +25,6 @@ public:
     void resized() override;
     void timerCallback() override;
     void updateColors();
-
-    void mouseDown (const juce::MouseEvent& e) override;
-    void mouseDrag (const juce::MouseEvent& e) override;
-    void mouseMove (const juce::MouseEvent& e) override;
-    void mouseUp   (const juce::MouseEvent& e) override;
 
 private:
     NewProjectAudioProcessor& audioProcessor;
@@ -64,16 +59,8 @@ private:
     juce::TextButton auditionButton { "" };
     std::unique_ptr<ButtonAttachment> auditionAtt;
 
-    juce::TextButton expandButton { "" };
-    bool showFFT = true;
-
     EnvelopeView envelopeView;
-    float splitRatio = 0.5f;
-    juce::Rectangle<int> envelopeArea, fftArea, dividerArea;
-
-    // Splitter dragging
-    enum DragAction { None, Splitter };
-    DragAction currentDragAction = None;
+    juce::Rectangle<int> envelopeArea, topologyArea;
 
     void setupKnob(juce::Slider& slider, const juce::String& id, std::unique_ptr<SliderAttachment>& attachment, const juce::String& suffix);
     void drawPixelArt(juce::Graphics& g, int x, int y, int scale, juce::Colour c, int type);

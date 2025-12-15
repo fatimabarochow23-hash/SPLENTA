@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    PluginEditor.cpp (SPLENTA V18.6 - 20251215.04)
-    Custom LookAndFeel: Knob & Fader Interactive Feedback
+    PluginEditor.cpp (SPLENTA V18.6 - 20251216.05)
+    Batch 03: UI Reorganization + Value Show-on-Interaction
   ==============================================================================
 */
 
@@ -73,16 +73,6 @@ NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor (NewProjectAudioP
     clipButton.setClickingTogglesState(true);
     clipAtt.reset(new ButtonAttachment(*audioProcessor.apvts, "SOFT_CLIP", clipButton));
 
-    addAndMakeVisible(expandButton);
-    expandButton.setButtonText("");
-    expandButton.setAlpha(0.0f);
-    expandButton.onClick = [this] {
-        showFFT = !showFFT;
-        audioProcessor.isDynamicZoomActive.store(!showFFT);
-        resized();
-        repaint();
-    };
-
     addAndMakeVisible(envelopeView);
 
     // Apply custom LookAndFeel
@@ -113,6 +103,10 @@ void NewProjectAudioProcessorEditor::setupKnob(juce::Slider& slider, const juce:
     slider.setRotaryParameters(juce::degreesToRadians(-145.0f), juce::degreesToRadians(145.0f), true);
 
     attachment.reset(new SliderAttachment(*audioProcessor.apvts, id, slider));
+
+    // Set initial alpha to 0 for show-on-interaction behavior
+    if (auto* tb = slider.getTextBox())
+        tb->setAlpha(0.0f);
 }
 
 void NewProjectAudioProcessorEditor::updateColors()
@@ -130,11 +124,12 @@ void NewProjectAudioProcessorEditor::updateColors()
     // Update EnvelopeView colors
     envelopeView.setThemeColors(palette.accent, palette.panel900);
 
-    // Apply colors to sliders
+    // Apply colors to sliders (use accent for text box color)
     auto apply = [&](juce::Slider& s) {
         s.setColour(juce::Slider::thumbColourId, palette.accent);
         s.setColour(juce::Slider::rotarySliderFillColourId, palette.accent);
         s.setColour(juce::Slider::rotarySliderOutlineColourId, palette.panel900.brighter(0.2f));
+        s.setColour(juce::Slider::textBoxTextColourId, palette.accent);
     };
     apply(threshSlider); apply(ceilingSlider); apply(relSlider); apply(waitSlider); apply(freqSlider); apply(qSlider);
     apply(startFreqSlider); apply(peakFreqSlider); apply(satSlider); apply(noiseSlider);
@@ -146,32 +141,7 @@ void NewProjectAudioProcessorEditor::updateColors()
         b.setColour(juce::TextButton::buttonOnColourId, palette.accent);
         b.setColour(juce::TextButton::textColourOnId, juce::Colours::black);
     };
-    applyBtn(agmButton); applyBtn(clipButton); applyBtn(expandButton);
-}
-
-void NewProjectAudioProcessorEditor::mouseMove(const juce::MouseEvent& e) {
-    if (dividerArea.contains(e.getPosition()) && showFFT)
-        setMouseCursor(juce::MouseCursor::LeftRightResizeCursor);
-    else
-        setMouseCursor(juce::MouseCursor::NormalCursor);
-}
-
-void NewProjectAudioProcessorEditor::mouseDown(const juce::MouseEvent& e) {
-    if (dividerArea.contains(e.getPosition()) && showFFT)
-        currentDragAction = Splitter;
-}
-
-void NewProjectAudioProcessorEditor::mouseUp(const juce::MouseEvent&) {
-    currentDragAction = None;
-}
-
-void NewProjectAudioProcessorEditor::mouseDrag(const juce::MouseEvent& e) {
-    if (currentDragAction == Splitter && showFFT) {
-        float newRatio = (float)(e.getPosition().x - 10) / 880.0f;
-        splitRatio = juce::jlimit(0.1f, 0.9f, newRatio);
-        resized();
-        repaint();
-    }
+    applyBtn(agmButton); applyBtn(clipButton);
 }
 
 void NewProjectAudioProcessorEditor::drawPixelArt(juce::Graphics& g, int startX, int startY, int scale, juce::Colour color, int type)
@@ -207,13 +177,24 @@ void NewProjectAudioProcessorEditor::timerCallback()
         updateColors();
     }
 
-    if (audioProcessor.nextFFTBlockReady) {
-        audioProcessor.forwardFFT.performFrequencyOnlyForwardTransform (audioProcessor.fftData.data());
-        audioProcessor.nextFFTBlockReady = false;
-        repaint();
-    } else {
-        repaint();
-    }
+    // Knob value show-on-interaction with fade effect
+    auto updateKnobAlpha = [](juce::Slider& slider) {
+        if (auto* tb = slider.getTextBox()) {
+            float targetAlpha = slider.isMouseButtonDown() ? 1.0f : 0.0f;
+            float currentAlpha = tb->getAlpha();
+            float newAlpha = currentAlpha + (targetAlpha - currentAlpha) * 0.2f;
+            tb->setAlpha(newAlpha);
+        }
+    };
+
+    updateKnobAlpha(threshSlider); updateKnobAlpha(ceilingSlider); updateKnobAlpha(relSlider);
+    updateKnobAlpha(waitSlider); updateKnobAlpha(freqSlider); updateKnobAlpha(qSlider);
+    updateKnobAlpha(startFreqSlider); updateKnobAlpha(peakFreqSlider); updateKnobAlpha(satSlider); updateKnobAlpha(noiseSlider);
+    updateKnobAlpha(pAttSlider); updateKnobAlpha(pDecSlider); updateKnobAlpha(aAttSlider); updateKnobAlpha(aDecSlider);
+    updateKnobAlpha(duckSlider); updateKnobAlpha(duckAttSlider); updateKnobAlpha(duckDecSlider);
+    updateKnobAlpha(wetSlider); updateKnobAlpha(drySlider); updateKnobAlpha(mixSlider);
+
+    repaint();
 }
 
 void NewProjectAudioProcessorEditor::paint (juce::Graphics& g)
@@ -230,93 +211,39 @@ void NewProjectAudioProcessorEditor::paint (juce::Graphics& g)
 
     g.fillAll (c_bg);
 
-    // Areas
-    int totalW = 960 - 20; int startX = 10; int topY = 30; int height = 200;
-    int splitX = startX + (int)(totalW * (showFFT ? splitRatio : 1.0f));
+    // Top visualization areas
+    int startX = 10; int topY = 30; int height = 200;
+    int envelopeWidth = 470;  // Half of original ~940
+    int topologyWidth = 460;   // Remaining width
 
-    envelopeArea = juce::Rectangle<int>(startX, topY, splitX - startX, height);
-    dividerArea = juce::Rectangle<int>(splitX, topY, showFFT ? 4 : 0, height);
-    fftArea = juce::Rectangle<int>(splitX + 4, topY, (startX + totalW) - (splitX + 4), height);
+    envelopeArea = juce::Rectangle<int>(startX, topY, envelopeWidth, height);
+    topologyArea = juce::Rectangle<int>(startX + envelopeWidth + 10, topY, topologyWidth, height);
 
-    // Envelope View
+    // Envelope View panel
     envelopeView.setBounds(envelopeArea);
     g.setColour (c_panel); g.fillRect (envelopeArea);
     g.setColour (c_accent.withAlpha(0.2f)); g.drawRect (envelopeArea);
 
-    // FFT
-    if (showFFT) {
-        g.setColour (c_panel); g.fillRect (fftArea);
-        g.setColour (c_accent.withAlpha(0.2f)); g.drawRect (fftArea);
-        g.saveState(); g.reduceClipRegion(fftArea);
-        auto mapFreqToX = [&](float freq) -> float {
-            float minF = 20.0f; float maxF = 20000.0f;
-            float normX = (std::log10(freq) - std::log10(minF)) / (std::log10(maxF) - std::log10(minF));
-            return fftArea.getX() + (fftArea.getWidth() * normX);
-        };
-        g.setFont(10.0f);
-        std::vector<float> majors = { 100.0f, 1000.0f, 10000.0f };
-        g.setColour(c_accent.withAlpha(0.4f));
-        for (float f : majors) {
-             float x = mapFreqToX(f);
-             if(x>fftArea.getX()) {
-                 g.drawVerticalLine((int)x, (float)fftArea.getY(), (float)fftArea.getBottom());
-                 g.setColour(c_text.withAlpha(0.9f));
-                 g.drawText(f>=1000?juce::String(f/1000)+"k":juce::String((int)f), (int)x+2, fftArea.getY()+2, 30, 12, juce::Justification::left);
-             }
-        }
-        g.setColour(c_accent.withAlpha(0.8f));
-        juce::Path fftPath; fftPath.startNewSubPath(fftArea.getX(), fftArea.getBottom());
-        auto& fftData = audioProcessor.fftData;
-        for (int i = 1; i < 1024; ++i) {
-            float binFreq = i * (48000.0f / 2048.0f); float x = mapFreqToX(binFreq);
-            float db = juce::Decibels::gainToDecibels(fftData[i]) - juce::Decibels::gainToDecibels(2048.0f) + 10.0f;
-            float y = fftArea.getBottom() - (juce::jmap(db, -100.0f, 0.0f, 0.0f, 1.0f) * fftArea.getHeight());
-            if(x>=fftArea.getX()) fftPath.lineTo(x, y);
-        }
-        fftPath.lineTo(fftArea.getRight(), fftArea.getBottom()); fftPath.closeSubPath();
-        g.setColour(c_accent.withAlpha(0.3f)); g.fillPath(fftPath);
-        g.setColour(c_accent); g.strokePath(fftPath, juce::PathStrokeType(1.5f));
-        g.restoreState();
+    // Energy Topology panel (placeholder)
+    g.setColour (c_panel); g.fillRect (topologyArea);
+    g.setColour (c_accent.withAlpha(0.2f)); g.drawRect (topologyArea);
+    g.setColour (c_text.withAlpha(0.6f));
+    g.setFont (juce::FontOptions(11.0f, juce::Font::bold));
+    g.drawText ("ENERGY TOPOLOGY", topologyArea.getX() + 10, topologyArea.getY() + 5, 200, 15, juce::Justification::left);
 
-        g.setColour(c_accent.withAlpha(0.5f)); g.fillRect(dividerArea);
-        if (dividerArea.contains(getMouseXYRelative())) g.setColour(juce::Colours::white);
-
-        int cx = expandButton.getX() + expandButton.getWidth()/2;
-        int cy = expandButton.getY() + expandButton.getHeight()/2;
-
-        // Circular expand button background
-        g.setColour(c_panel.brighter(0.3f));
-        g.fillEllipse(expandButton.getX(), expandButton.getY(), 24, 24);
-
-        g.setColour(c_text);
-        juce::Path arrow;
-        arrow.startNewSubPath(cx-3, cy-5); arrow.lineTo(cx+2, cy); arrow.lineTo(cx-3, cy+5); // >
-        g.strokePath(arrow, juce::PathStrokeType(2.0f));
-    } else {
-        int cx = expandButton.getX() + expandButton.getWidth()/2;
-        int cy = expandButton.getY() + expandButton.getHeight()/2;
-
-        // Circular expand button background
-        g.setColour(c_panel.brighter(0.3f));
-        g.fillEllipse(expandButton.getX(), expandButton.getY(), 24, 24);
-
-        g.setColour(c_text);
-        juce::Path arrow;
-        arrow.startNewSubPath(cx+2, cy-5); arrow.lineTo(cx-3, cy); arrow.lineTo(cx+2, cy+5); // <
-        g.strokePath(arrow, juce::PathStrokeType(2.0f));
-    }
-
+    // Trigger icon
     if (audioProcessor.isTriggeredUI) {
-        int iconX = showFFT ? (fftArea.getRight() - 50) : (envelopeArea.getRight() - 50);
+        int iconX = envelopeArea.getRight() - 50;
         drawPixelArt(g, iconX, 45, 4, c_accent, themeIndex);
     }
 
+    // Audition button (headphone icon)
     juce::Colour earColor = auditionButton.getToggleState() ? c_accent : c_text.withAlpha(0.2f);
     drawPixelHeadphone(g, auditionButton.getX(), auditionButton.getY() + 2, 2, earColor);
     g.setColour(earColor); g.setFont(12.0f);
     g.drawText("Listen", auditionButton.getX() + 25, auditionButton.getY(), 50, 20, juce::Justification::left);
 
-    // Labels
+    // Section labels
     g.setColour (c_accent); g.setFont (juce::FontOptions(14.0f, juce::Font::bold));
     int startY = 250; int colW = 220;
     g.drawText ("// DETECTOR", 20, startY, 150, 20, juce::Justification::left);
@@ -324,12 +251,15 @@ void NewProjectAudioProcessorEditor::paint (juce::Graphics& g)
     g.drawText ("// ENVELOPE",  20 + colW*2, startY, 150, 20, juce::Justification::left);
     g.drawText ("// OUTPUT",    20 + colW*3, startY, 150, 20, juce::Justification::left);
 
+    // Knob labels
     g.setColour (c_text.withAlpha(0.8f)); g.setFont (juce::FontOptions(12.0f));
     auto drawLabel = [&](juce::Slider& s, const juce::String& name) { g.drawText (name, s.getX(), s.getY() - 15, s.getWidth(), 15, juce::Justification::centred); };
     drawLabel(threshSlider, "Thresh"); drawLabel(ceilingSlider, "Ceiling"); drawLabel(relSlider, "Rel"); drawLabel(waitSlider, "Wait"); drawLabel(freqSlider, "Freq"); drawLabel(qSlider, "Q");
     drawLabel(startFreqSlider, "Start"); drawLabel(peakFreqSlider, "Peak"); drawLabel(satSlider, "Sat"); drawLabel(noiseSlider, "Noise");
     drawLabel(pAttSlider, "P.Att"); drawLabel(pDecSlider, "P.Dec"); drawLabel(aAttSlider, "A.Att"); drawLabel(aDecSlider, "A.Dec");
     drawLabel(duckSlider, "Duck"); drawLabel(duckAttSlider, "D.Att"); drawLabel(duckDecSlider, "D.Dec"); drawLabel(wetSlider, "Wet"); drawLabel(drySlider, "Dry"); drawLabel(mixSlider, "Mix");
+
+    // Branding
     g.setColour (c_accent.brighter(0.2f)); g.setFont (juce::FontOptions ("Arial", 24.0f, juce::Font::bold | juce::Font::italic)); g.drawText ("SPLENTA", 800, 550, 120, 30, juce::Justification::right);
     g.setFont (juce::FontOptions(10.0f)); g.setColour (c_text.withAlpha(0.8f)); g.drawText ("AUDIO TOOLS", 800, 575, 100, 10, juce::Justification::right);
     g.setColour (c_accent); g.fillRect (835, 572, 65, 2);
@@ -341,9 +271,6 @@ void NewProjectAudioProcessorEditor::resized()
     int startY = 290; int colW = 220; int knobSize = 65; int gap = 85;
     themeSelector.setBounds(790, 5, 150, 24);
     presetBox.setBounds(130, 5, 150, 20);
-    int totalW = 960 - 20;
-    int splitX = 10 + (int)(totalW * (showFFT ? splitRatio : 1.0f));
-    expandButton.setBounds(splitX - 12, 98, 24, 24);
     agmButton.setBounds(860, 250, 80, 25); clipButton.setBounds(860, 290, 80, 25);
     threshSlider.setBounds (20, startY, knobSize, knobSize); ceilingSlider.setBounds(100, startY, knobSize, knobSize); relSlider.setBounds(20, startY + gap, knobSize, knobSize); waitSlider.setBounds(100, startY + gap, knobSize, knobSize); freqSlider.setBounds(20, startY + gap*2, knobSize, knobSize); qSlider.setBounds(100, startY + gap*2, knobSize, knobSize); auditionButton.setBounds(20, startY + gap*3, 40, 25);
     startFreqSlider.setBounds (20 + colW, startY, knobSize, knobSize); peakFreqSlider.setBounds(100 + colW, startY, knobSize, knobSize); satSlider.setBounds(20 + colW, startY + gap, knobSize, knobSize); noiseSlider.setBounds(100 + colW, startY + gap, knobSize, knobSize); shapeBox.setBounds(20 + colW, startY + gap*2, 150, 25);
