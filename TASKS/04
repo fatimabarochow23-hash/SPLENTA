@@ -1,0 +1,414 @@
+你是 JUCE/C++ 图形与动画工程师。现在进入 SPLENTA GUI 移植 Batch 04：Energy Topology（MobiusVisualizer）从 Web Canvas 算法移植到 JUCE 2D Graphics。
+
+【输入参考（核心算法必须保留）】
+我将提供 Web 版 components/MobiusVisualizer.tsx 的完整代码（Canvas 粒子系统、5 个主题渲染器：Mobius/Waves/Moon/Network/Sakura）。你必须把这些数学逻辑作为“核心算法”移植，而不是随意换效果。
+以下为web版MobiusVisualizer.tsx 的完整代码
+import React, { useRef, useEffect } from 'react';
+
+interface VisualizerProps {
+  intensity: number;
+  accentColor: string;
+  theme: string;
+}
+
+export const MobiusVisualizer: React.FC<VisualizerProps> = ({ intensity, accentColor, theme }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animationId: number;
+    let time = 0;
+
+    // --- PARTICLE SYSTEM INIT ---
+    const numParticles = 400;
+    const particles: any[] = [];
+    
+    // Initialize particles generically
+    for (let i = 0; i < numParticles; i++) {
+      particles.push({
+        x: Math.random() * 100, // Generic coords
+        y: Math.random() * 100,
+        z: Math.random() * 100,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: (Math.random() - 0.5) * 0.5,
+        angle: Math.random() * Math.PI * 2,
+        radius: Math.random() * 20 + 10,
+        offset: Math.random() * Math.PI * 2,
+        speed: 0.005 + Math.random() * 0.01,
+        life: Math.random()
+      });
+    }
+
+    // Helper: Hex to RGB
+    const hexToRgb = (hex: string) => {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+      } : { r: 255, g: 255, b: 255 };
+    };
+
+    const render = () => {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      
+      if (canvas.width !== rect.width * dpr || canvas.height !== rect.height * dpr) {
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+      }
+      
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(dpr, dpr);
+      const width = rect.width;
+      const height = rect.height;
+      const cx = width / 2;
+      const cy = height / 2;
+
+      // Clear with trails
+      ctx.fillStyle = 'rgba(15, 12, 10, 0.25)'; 
+      ctx.fillRect(0, 0, width, height);
+
+      const normalizedIntensity = intensity / 100;
+      const speedMultiplier = 1 + (normalizedIntensity * 3);
+      time += 0.01 * speedMultiplier;
+
+      const rgb = hexToRgb(accentColor);
+      const colorStr = (alpha: number) => `rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})`;
+
+      // --- THEME RENDERERS ---
+
+      // 1. BRONZE: MOBIUS STRIP
+      const drawMobius = () => {
+        const scale = Math.min(width, height) * 0.35;
+        
+        particles.forEach((p, i) => {
+          // Recycle particles for Mobius logic
+          // p.angle is 'u', p.offset is 'v' (sort of) in mobius param
+          p.angle += p.speed * speedMultiplier;
+          
+          const u = p.angle;
+          const v = Math.sin(p.angle * 2 + p.offset) * 0.5; // Strip width variation
+
+          const radius = scale * (1 + v * Math.cos(u / 2));
+          const x3d = radius * Math.cos(u);
+          const y3d = radius * Math.sin(u);
+          const z3d = scale * v * Math.sin(u / 2);
+
+          // Rotate the whole strip
+          const rotX = time * 0.2;
+          const rotY = time * 0.3;
+          
+          const cosRy = Math.cos(rotY);
+          const sinRy = Math.sin(rotY);
+          const xRot = x3d * cosRy - z3d * sinRy;
+          const zRot = x3d * sinRy + z3d * cosRy;
+          
+          const cosRx = Math.cos(rotX);
+          const sinRx = Math.sin(rotX);
+          const yRot = y3d * cosRx - zRot * sinRx;
+
+          const x2d = cx + xRot;
+          const y2d = cy + yRot;
+          
+          const depthAlpha = (zRot + scale) / (2 * scale);
+          const alpha = Math.max(0.1, Math.min(1, depthAlpha)) * (0.5 + normalizedIntensity * 0.5);
+          
+          const size = (2 + normalizedIntensity * 2) * alpha;
+
+          ctx.fillStyle = colorStr(alpha);
+          ctx.beginPath();
+          ctx.arc(x2d, y2d, size, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      };
+
+      // 2. BLUE: OCEAN WAVES
+      const drawWaves = () => {
+        const scale = Math.min(width, height) * 0.4;
+        const rows = 20;
+        const cols = 20;
+        
+        // We don't use the particle array directly, we iterate a grid
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            // Normalized coords -1 to 1
+            const u = (c / cols - 0.5) * 2;
+            const v = (r / rows - 0.5) * 2;
+            
+            // Circular Mask
+            if (u*u + v*v > 1) continue;
+
+            // Wave height function
+            const dist = Math.sqrt(u*u + v*v);
+            const heightVal = Math.sin(dist * 5 - time * 2) * Math.cos(u * 5 + time) * 0.5 * (0.2 + normalizedIntensity);
+            
+            // 3D Projection
+            const x3d = u * scale;
+            const z3d = v * scale;
+            const y3d = heightVal * scale; // Up is Y here
+
+            // Rotate View
+            const rotAngle = time * 0.1;
+            const xRot = x3d * Math.cos(rotAngle) - z3d * Math.sin(rotAngle);
+            const zRot = x3d * Math.sin(rotAngle) + z3d * Math.cos(rotAngle);
+            
+            // Tilt camera
+            const tilt = 0.5; // Radians
+            const yFinal = y3d * Math.cos(tilt) - zRot * Math.sin(tilt);
+            const zFinal = y3d * Math.sin(tilt) + zRot * Math.cos(tilt);
+
+            const persp = 1000 / (1000 - zFinal);
+            const x2d = cx + xRot * persp;
+            const y2d = cy + yFinal * persp;
+            
+            const alpha = ((zFinal + scale) / (scale * 2)) * 0.8 + 0.2;
+            const size = 2 * persp + (heightVal * 10 * normalizedIntensity);
+
+            ctx.fillStyle = colorStr(alpha);
+            ctx.beginPath();
+            ctx.arc(x2d, y2d, Math.max(0.5, size), 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      };
+
+      // 3. PURPLE: CYBER MOON
+      const drawMoon = () => {
+        const scale = Math.min(width, height) * 0.3;
+        
+        particles.forEach((p, i) => {
+          // Sphere Surface
+          // Map index to sphere coords using Golden Spiral for even distribution
+          const phi = Math.acos(1 - 2 * (i + 0.5) / numParticles);
+          const theta = Math.PI * (1 + Math.sqrt(5)) * (i + 0.5);
+          
+          const r = scale;
+          let x3d = r * Math.sin(phi) * Math.cos(theta);
+          let y3d = r * Math.sin(phi) * Math.sin(theta);
+          let z3d = r * Math.cos(phi);
+
+          // Rotate Sphere
+          const rotY = time * 0.5;
+          const rotZ = 0.2; // Tilt
+          
+          // Y Rotation
+          let tx = x3d * Math.cos(rotY) - z3d * Math.sin(rotY);
+          let tz = x3d * Math.sin(rotY) + z3d * Math.cos(rotY);
+          x3d = tx; z3d = tz;
+
+          // Z Tilt
+          let ty = y3d * Math.cos(rotZ) - x3d * Math.sin(rotZ);
+          tx = y3d * Math.sin(rotZ) + x3d * Math.cos(rotZ);
+          x3d = tx; y3d = ty;
+
+          const x2d = cx + x3d;
+          const y2d = cy + y3d;
+
+          // Draw Sphere Dot
+          if (z3d < 0) { // Backface culling
+            ctx.fillStyle = colorStr(0.1); 
+          } else {
+             const alpha = 0.3 + (z3d / scale) * 0.7;
+             ctx.fillStyle = colorStr(alpha);
+          }
+          ctx.beginPath();
+          ctx.arc(x2d, y2d, 1.5 + normalizedIntensity, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // Orbital Ring
+        ctx.strokeStyle = colorStr(0.4 + normalizedIntensity * 0.4);
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let a = 0; a <= Math.PI * 2; a += 0.1) {
+            const ringR = scale * 1.6;
+            let rx = ringR * Math.cos(a);
+            let ry = 0;
+            let rz = ringR * Math.sin(a);
+            
+            // Wobble ring with audio
+            ry += Math.sin(a * 5 + time * 5) * (10 * normalizedIntensity);
+
+            // Same rotation as sphere but slower
+            const rotY = time * 0.2; 
+            const rotZ = 0.4;
+
+            let tx = rx * Math.cos(rotY) - rz * Math.sin(rotY);
+            let tz = rx * Math.sin(rotY) + rz * Math.cos(rotY);
+            rx = tx; rz = tz;
+
+            let ty = ry * Math.cos(rotZ) - rx * Math.sin(rotZ);
+            tx = ry * Math.sin(rotZ) + rx * Math.cos(rotZ);
+            rx = tx; ry = ty;
+
+            if (a === 0) ctx.moveTo(cx + rx, cy + ry);
+            else ctx.lineTo(cx + rx, cy + ry);
+        }
+        ctx.stroke();
+      };
+
+      // 4. GREEN: HACKER NETWORK
+      const drawNetwork = () => {
+         const scale = Math.min(width, height) * 0.45;
+         
+         // Only use a subset of particles for cleaner look
+         const nodeCount = 60; 
+         
+         ctx.strokeStyle = colorStr(0.3 + normalizedIntensity * 0.5);
+         ctx.lineWidth = 1;
+
+         const nodes: {x:number, y:number}[] = [];
+
+         for (let i = 0; i < nodeCount; i++) {
+             const p = particles[i];
+             
+             // Move particles in pseudo-random box
+             // Using sine waves based on index to keep deterministic but chaotic
+             const x = Math.sin(time * p.speed * 20 + i) * scale * 1.5;
+             const y = Math.cos(time * p.speed * 15 + i * 2) * scale * 0.8;
+             
+             // Glitch jump on beat
+             let gx = x;
+             let gy = y;
+             if (normalizedIntensity > 0.5 && Math.random() > 0.9) {
+                 gx += (Math.random() - 0.5) * 50;
+             }
+
+             nodes.push({x: cx + gx, y: cy + gy});
+             
+             // Draw Node
+             ctx.fillStyle = colorStr(0.8);
+             ctx.fillRect(cx + gx - 1.5, cy + gy - 1.5, 3, 3);
+         }
+
+         // Connect Neighbors
+         ctx.beginPath();
+         for (let i = 0; i < nodes.length; i++) {
+             for (let j = i + 1; j < nodes.length; j++) {
+                 const dx = nodes[i].x - nodes[j].x;
+                 const dy = nodes[i].y - nodes[j].y;
+                 const dist = Math.sqrt(dx*dx + dy*dy);
+                 
+                 // Connection threshold increases with intensity
+                 const thresh = 60 + normalizedIntensity * 60;
+
+                 if (dist < thresh) {
+                     ctx.moveTo(nodes[i].x, nodes[i].y);
+                     ctx.lineTo(nodes[j].x, nodes[j].y);
+                 }
+             }
+         }
+         ctx.stroke();
+      };
+
+      // 5. PINK: SAKURA VORTEX
+      const drawSakura = () => {
+         const scale = Math.min(width, height) * 0.4;
+
+         particles.forEach((p, i) => {
+             // Spiral Motion
+             p.life -= 0.005;
+             if (p.life < 0) {
+                 p.life = 1;
+                 p.radius = Math.random() * scale * 1.5; // Reset to random distance
+             }
+
+             const r = p.radius * p.life; // Spiral in
+             const angle = p.angle + time * (1 + normalizedIntensity);
+             
+             const x = cx + r * Math.cos(angle);
+             const y = cy + r * Math.sin(angle);
+             
+             // Petal orientation (tumbling)
+             const tumble = time * 5 + i;
+             
+             // Draw Petal (Simple Oval)
+             ctx.save();
+             ctx.translate(x, y);
+             ctx.rotate(tumble);
+             
+             const alpha = Math.sin(p.life * Math.PI); // Fade in/out
+             ctx.fillStyle = colorStr(alpha * 0.8);
+             
+             // Draw a simple petal shape
+             ctx.beginPath();
+             ctx.ellipse(0, 0, 4 + normalizedIntensity*2, 2, 0, 0, Math.PI * 2);
+             ctx.fill();
+             
+             ctx.restore();
+         });
+      };
+
+
+      // --- SELECT MODE ---
+      if (theme === 'blue') drawWaves();
+      else if (theme === 'purple') drawMoon();
+      else if (theme === 'green') drawNetwork();
+      else if (theme === 'pink') drawSakura();
+      else drawMobius(); // Default Bronze
+
+      animationId = requestAnimationFrame(render);
+    };
+
+    render();
+
+    return () => cancelAnimationFrame(animationId);
+  }, [intensity, accentColor, theme]);
+
+  return (
+    <div className="relative w-full h-full overflow-hidden bg-transparent">
+      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+      
+      {/* Glow Overlay - Subtle global glow matching theme */}
+      <div 
+        className="absolute inset-0 pointer-events-none transition-opacity duration-300 mix-blend-screen"
+        style={{
+            background: `radial-gradient(circle, ${accentColor}20 0%, transparent 70%)`,
+            opacity: 0.5 + intensity / 200
+        }}
+      />
+    </div>
+  );
+};
+
+【必须实现的功能】
+1) 新增 JUCE 组件（例如 EnergyTopologyComponent / MobiusVisualizerComponent）：
+- 内部持有粒子池（numParticles = 400，字段结构与 tsx 等价：angle/radius/offset/speed/life 以及必要的 x/y/z 或中间变量）。
+- 用 Timer 或高精度机制驱动动画（建议 60fps 或自适应；CPU 需可控）。
+- 支持强度 intensity（0..100）控制速度、alpha、尺寸等（对齐 tsx：normalizedIntensity=intensity/100；speedMultiplier=1+normalizedIntensity*3 等）。
+
+2) 主题模式切换（对齐 tsx 的 5 种主题）：
+- Bronze: Mobius strip 粒子（u/v 参数、旋转、z 深度决定 alpha/size）
+- Blue: Ocean waves 网格投影（grid rows/cols；圆形 mask；透视 projection）
+- Purple: Cyber moon（Golden spiral sphere distribution + ring）
+- Green: Hacker network（节点 + 阈值连线；强度影响阈值/闪烁）
+- Pink: Sakura vortex（life 衰减 + 旋转椭圆花瓣）
+
+3) 深度/透视错觉（对齐 tsx）：
+- 使用 z 或 projection factor 影响 alpha 与 size（近大远小、近实远虚）。
+
+4) 颜色与主题集成（必须对齐 Theme.h 字段名）：
+- 颜色来源为 ThemePalette.accent 与 glow（可用 accent 做粒子主色，glow 做全局径向 glow 或发光叠加）。
+- 组件提供 setPalette(const ThemePalette&) 与 setIntensity(float or int)。
+- PluginEditor 在主题变化时调用 setPalette，并在强度参数变化时调用 setIntensity（不改变 APVTS，只做绑定/监听）。
+
+5) 全局 glow overlay（对齐 tsx 的 radial-gradient 叠加思路）：
+- 使用 JUCE radial gradient 或多层 alpha 绘制实现，强度越高 glow 越明显。
+
+【约束】
+- 不使用 WebGL；只用 JUCE Graphics。
+- 不引入第三方库。
+- 不改音频逻辑与参数定义，只加 UI 组件与必要的监听/回调。
+- 必须考虑性能：粒子/网格要可控（必要时对 Waves 使用较低分辨率或缓存策略，但要保持视觉相似）。
+
+【输出要求】
+A) 输出新增组件的 .h/.cpp（全量）。
+B) 输出 PluginEditor 集成的最小改动说明（放置区域、bounds、主题/强度注入点）。
+C) 给出一个简短的性能说明：在 400 粒子与 waves 网格下，如何避免过高 CPU（例如降低 grid、限制重绘区域、减少对象分配等）。
+
+注意匹配一下ENERGY TOPOLOGY显示框，整体视效表现可在横向框内优化，因为原本web版是在正方形框内表现
