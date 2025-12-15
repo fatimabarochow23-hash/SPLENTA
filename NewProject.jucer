@@ -15,6 +15,8 @@
     <FILE id="egU94Z" name="EnvelopeView.cpp" compile="1" resource="0"
           file="Source/EnvelopeView.cpp"/>
     <FILE id="kL5fQ8" name="EnvelopeView.h" compile="0" resource="0" file="Source/EnvelopeView.h"/>
+    <FILE id="rIIlRv" name="Theme.h" compile="0" resource="0" file="Source/Theme.h"/>
+    <FILE id="zWZxBH" name="ThemeSelector.h" compile="0" resource="0" file="Source/ThemeSelector.h"/>
   </MAINGROUP>
   <MODULES>
     <MODULE id="juce_analytics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
