@@ -12,6 +12,9 @@
             file="Source/PluginEditor.cpp"/>
       <FILE id="ZCfkPl" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
     </GROUP>
+    <FILE id="egU94Z" name="EnvelopeView.cpp" compile="1" resource="0"
+          file="Source/EnvelopeView.cpp"/>
+    <FILE id="kL5fQ8" name="EnvelopeView.h" compile="0" resource="0" file="Source/EnvelopeView.h"/>
   </MAINGROUP>
   <MODULES>
     <MODULE id="juce_analytics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
