@@ -437,7 +437,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout NewProjectAudioProcessor::cr
     layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("MIX", 1), "Mix %", juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 50.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
     layout.add (std::make_unique<juce::AudioParameterChoice>(juce::ParameterID("AGM_MODE", 1), "AGM", juce::StringArray("Off", "On"), 0));
     layout.add (std::make_unique<juce::AudioParameterChoice>(juce::ParameterID("SOFT_CLIP", 1), "Clip", juce::StringArray("Off", "On"), 1));
-    layout.add (std::make_unique<juce::AudioParameterChoice>(juce::ParameterID("THEME", 1), "Theme", juce::StringArray("RX Classic", "ARC Rust", "Pro Purple", "Astro Grey", "Acid Volt"), 1));
+    layout.add (std::make_unique<juce::AudioParameterChoice>(juce::ParameterID("THEME", 1), "Theme", juce::StringArray("Bronze", "Blue", "Purple", "Green", "Pink"), 0));
     
     return layout;
 }

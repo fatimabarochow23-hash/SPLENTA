@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    PluginEditor.h (SPLENTA V18.5 - 20251127.01)
-    Dynamic Envelope Visualization System
+    PluginEditor.h (SPLENTA V18.6 - 20251215.02)
+    Theme System Integration & UI Refinement
   ==============================================================================
 */
 
@@ -10,6 +10,9 @@
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
 #include "EnvelopeView.h"
+#include "ThemeSelector.h"
+#include "Theme.h"
+
 class NewProjectAudioProcessorEditor  : public juce::AudioProcessorEditor,
                                         public juce::Timer
 {
@@ -21,7 +24,7 @@ public:
     void resized() override;
     void timerCallback() override;
     void updateColors();
-    
+
     void mouseDown (const juce::MouseEvent& e) override;
     void mouseDrag (const juce::MouseEvent& e) override;
     void mouseMove (const juce::MouseEvent& e) override;
@@ -36,24 +39,27 @@ private:
 
     juce::Slider threshSlider, ceilingSlider, relSlider, waitSlider, freqSlider, qSlider;
     std::unique_ptr<SliderAttachment> threshAtt, ceilingAtt, relAtt, waitAtt, freqAtt, qAtt;
-    
+
     juce::Slider startFreqSlider, peakFreqSlider, satSlider, noiseSlider;
     std::unique_ptr<SliderAttachment> startFreqAtt, peakFreqAtt, satAtt, noiseAtt;
-    
+
     juce::Slider pAttSlider, pDecSlider, aAttSlider, aDecSlider;
     std::unique_ptr<SliderAttachment> pAttAtt, pDecAtt, aAttAtt, aDecAtt;
-    
+
     juce::Slider duckSlider, duckAttSlider, duckDecSlider, wetSlider, drySlider, mixSlider;
     std::unique_ptr<SliderAttachment> duckAtt, duckAttAtt, duckDecAtt, wetAtt, dryAtt, mixAtt;
 
-    juce::ComboBox shapeBox, themeBox, presetBox;
-    std::unique_ptr<ComboBoxAttachment> shapeAtt, themeAtt;
-    
+    juce::ComboBox shapeBox, presetBox;
+    std::unique_ptr<ComboBoxAttachment> shapeAtt;
+
+    // Theme selector (replaces old themeBox)
+    ThemeSelector themeSelector;
+
     juce::TextButton agmButton { "Auto Gain" };
     std::unique_ptr<ButtonAttachment> agmAtt;
     juce::TextButton clipButton { "Soft Clip" };
     std::unique_ptr<ButtonAttachment> clipAtt;
-    
+
     juce::TextButton auditionButton { "" };
     std::unique_ptr<ButtonAttachment> auditionAtt;
 

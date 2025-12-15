@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    PluginEditor.cpp (SPLENTA V18.5 - 20251127.01)
-    Dynamic Envelope Visualization System
+    PluginEditor.cpp (SPLENTA V18.6 - 20251215.02)
+    Theme System Integration & UI Refinement
   ==============================================================================
 */
 
@@ -45,11 +45,16 @@ NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor (NewProjectAudioP
     auditionButton.setAlpha(0.0f);
     auditionAtt.reset(new ButtonAttachment(*audioProcessor.apvts, "AUDITION", auditionButton));
 
-    addAndMakeVisible(themeBox);
-    themeBox.addItemList( {"RX Classic", "ARC Rust", "Pro Purple", "Astro Grey", "Acid Volt"}, 1 );
-    themeAtt.reset(new ComboBoxAttachment(*audioProcessor.apvts, "THEME", themeBox));
-    themeBox.onChange = [this] { updateColors(); repaint(); };
-    
+    // Initialize ThemeSelector
+    addAndMakeVisible(themeSelector);
+    int currentThemeIndex = (int)audioProcessor.apvts->getRawParameterValue("THEME")->load();
+    themeSelector.setSelectedIndex(currentThemeIndex);
+    themeSelector.onThemeChanged = [this](int index) {
+        audioProcessor.setParameterValue("THEME", (float)index);
+        updateColors();
+        repaint();
+    };
+
     addAndMakeVisible(presetBox);
     presetBox.setText("Preset");
     presetBox.addSectionHeading("Realistic");
@@ -64,15 +69,20 @@ NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor (NewProjectAudioP
     addAndMakeVisible(agmButton);
     agmButton.setClickingTogglesState(true);
     agmAtt.reset(new ButtonAttachment(*audioProcessor.apvts, "AGM_MODE", agmButton));
-    
+
     addAndMakeVisible(clipButton);
     clipButton.setClickingTogglesState(true);
     clipAtt.reset(new ButtonAttachment(*audioProcessor.apvts, "SOFT_CLIP", clipButton));
-    
+
     addAndMakeVisible(expandButton);
     expandButton.setButtonText("");
     expandButton.setAlpha(0.0f);
-    expandButton.onClick = [this] { showFFT = !showFFT; resized(); repaint(); };
+    expandButton.onClick = [this] {
+        showFFT = !showFFT;
+        audioProcessor.isDynamicZoomActive.store(!showFFT);
+        resized();
+        repaint();
+    };
 
     addAndMakeVisible(envelopeView);
 
@@ -97,33 +107,30 @@ void NewProjectAudioProcessorEditor::setupKnob(juce::Slider& slider, const juce:
 
 void NewProjectAudioProcessorEditor::updateColors()
 {
-    int themeID = themeBox.getSelectedItemIndex();
-    if (themeID < 0) themeID = 1;
-    juce::Colour c_accent, c_panel;
+    // Read theme index from THEME parameter
+    int themeIndex = (int)audioProcessor.apvts->getRawParameterValue("THEME")->load();
+    auto palette = ThemePalette::getPaletteByIndex(themeIndex);
 
-    switch (themeID) {
-        case 0: c_accent=juce::Colour(0xff42a5f5); c_panel=juce::Colour(0xff22262e); break;
-        case 1: c_accent=juce::Colour(0xffff7722); c_panel=juce::Colour(0xff110b09); break;
-        case 2: c_accent=juce::Colour(0xff9d55ff); c_panel=juce::Colour(0xff222229); break;
-        case 3: c_accent=juce::Colour(0xffffaa00); c_panel=juce::Colour(0xff383838); break;
-        case 4: c_accent=juce::Colour(0xffccff00); c_panel=juce::Colour(0xff101210); break;
-    }
+    // Update ThemeSelector
+    themeSelector.setSelectedIndex(themeIndex);
 
-    // Update EnvelopeView theme colors dynamically
-    envelopeView.setThemeColors(c_accent, c_panel);
+    // Update EnvelopeView colors
+    envelopeView.setThemeColors(palette.accent, palette.panel900);
 
+    // Apply colors to sliders
     auto apply = [&](juce::Slider& s) {
-        s.setColour(juce::Slider::thumbColourId, c_accent);
-        s.setColour(juce::Slider::rotarySliderFillColourId, c_accent);
-        s.setColour(juce::Slider::rotarySliderOutlineColourId, c_panel.brighter(0.2f));
+        s.setColour(juce::Slider::thumbColourId, palette.accent);
+        s.setColour(juce::Slider::rotarySliderFillColourId, palette.accent);
+        s.setColour(juce::Slider::rotarySliderOutlineColourId, palette.panel900.brighter(0.2f));
     };
     apply(threshSlider); apply(ceilingSlider); apply(relSlider); apply(waitSlider); apply(freqSlider); apply(qSlider);
     apply(startFreqSlider); apply(peakFreqSlider); apply(satSlider); apply(noiseSlider);
     apply(pAttSlider); apply(pDecSlider); apply(aAttSlider); apply(aDecSlider);
     apply(duckSlider); apply(duckAttSlider); apply(duckDecSlider); apply(wetSlider); apply(drySlider); apply(mixSlider);
 
+    // Apply colors to buttons
     auto applyBtn = [&](juce::TextButton& b) {
-        b.setColour(juce::TextButton::buttonOnColourId, c_accent);
+        b.setColour(juce::TextButton::buttonOnColourId, palette.accent);
         b.setColour(juce::TextButton::textColourOnId, juce::Colours::black);
     };
     applyBtn(agmButton); applyBtn(clipButton); applyBtn(expandButton);
@@ -188,17 +195,16 @@ void NewProjectAudioProcessorEditor::timerCallback()
 
 void NewProjectAudioProcessorEditor::paint (juce::Graphics& g)
 {
-    juce::Colour c_bg, c_panel, c_accent, c_text;
-    int themeID = themeBox.getSelectedItemIndex();
-    if (themeID < 0) themeID = 1;
-    switch (themeID) {
-        case 0: c_bg=juce::Colour(0xff181b20); c_panel=juce::Colour(0xff22262e); c_accent=juce::Colour(0xff42a5f5); break;
-        case 1: c_bg=juce::Colour(0xff1a1210); c_panel=juce::Colour(0xff110b09); c_accent=juce::Colour(0xffff7722); break;
-        case 2: c_bg=juce::Colour(0xff18181c); c_panel=juce::Colour(0xff222229); c_accent=juce::Colour(0xff9d55ff); break;
-        case 3: c_bg=juce::Colour(0xff2a2a2a); c_panel=juce::Colour(0xff383838); c_accent=juce::Colour(0xffffaa00); break;
-        case 4: c_bg=juce::Colour(0xff050505); c_panel=juce::Colour(0xff101210); c_accent=juce::Colour(0xffccff00); break;
-    }
-    c_text = juce::Colours::white;
+    // Get theme colors
+    int themeIndex = (int)audioProcessor.apvts->getRawParameterValue("THEME")->load();
+    auto palette = ThemePalette::getPaletteByIndex(themeIndex);
+
+    juce::Colour c_bg = palette.bg950;
+    juce::Colour c_panel = palette.panel900;
+    juce::Colour c_accent = palette.accent;
+    juce::Colour c_glow = palette.glow;
+    juce::Colour c_text = juce::Colours::white;
+
     g.fillAll (c_bg);
 
     // Areas
@@ -264,43 +270,6 @@ void NewProjectAudioProcessorEditor::paint (juce::Graphics& g)
         arrow.startNewSubPath(cx-3, cy-5); arrow.lineTo(cx+2, cy); arrow.lineTo(cx-3, cy+5); // >
         g.strokePath(arrow, juce::PathStrokeType(2.0f));
     } else {
-        // === Sniper Scope Visualization (When FFT Collapsed) ===
-        int scopeX = envelopeArea.getRight() + 20;
-        int scopeY = envelopeArea.getY() + envelopeArea.getHeight() / 2;
-
-        // Get Release parameter value (DET_REL)
-        float releaseMS = audioProcessor.apvts->getRawParameterValue("DET_REL")->load();
-
-        // Map Release time to bracket gap width (1ms -> 10px, 500ms -> 100px)
-        float gapWidth = juce::jmap(releaseMS, 1.0f, 500.0f, 10.0f, 100.0f);
-
-        g.setColour(c_accent);
-        g.setFont(18.0f);
-
-        // Draw parametric bracket visualization
-        int bracketHeight = 40;
-        int leftBracketX = scopeX - (int)(gapWidth / 2);
-        int rightBracketX = scopeX + (int)(gapWidth / 2);
-
-        // Left bracket: (
-        juce::Path leftBracket;
-        leftBracket.startNewSubPath(leftBracketX + 8, scopeY - bracketHeight/2);
-        leftBracket.quadraticTo(leftBracketX, scopeY, leftBracketX + 8, scopeY + bracketHeight/2);
-        g.strokePath(leftBracket, juce::PathStrokeType(2.5f, juce::PathStrokeType::curved));
-
-        // Right bracket: )
-        juce::Path rightBracket;
-        rightBracket.startNewSubPath(rightBracketX - 8, scopeY - bracketHeight/2);
-        rightBracket.quadraticTo(rightBracketX, scopeY, rightBracketX - 8, scopeY + bracketHeight/2);
-        g.strokePath(rightBracket, juce::PathStrokeType(2.5f, juce::PathStrokeType::curved));
-
-        // Display Release value
-        g.setFont(12.0f);
-        g.setColour(c_text.withAlpha(0.8f));
-        g.drawText("REL: " + juce::String((int)releaseMS) + "ms",
-                   scopeX - 40, scopeY + bracketHeight/2 + 10, 80, 20,
-                   juce::Justification::centred);
-
         int cx = expandButton.getX() + expandButton.getWidth()/2;
         int cy = expandButton.getY() + expandButton.getHeight()/2;
 
@@ -316,9 +285,9 @@ void NewProjectAudioProcessorEditor::paint (juce::Graphics& g)
 
     if (audioProcessor.isTriggeredUI) {
         int iconX = showFFT ? (fftArea.getRight() - 50) : (envelopeArea.getRight() - 50);
-        drawPixelArt(g, iconX, 45, 4, c_accent, themeID);
+        drawPixelArt(g, iconX, 45, 4, c_accent, themeIndex);
     }
-    
+
     juce::Colour earColor = auditionButton.getToggleState() ? c_accent : c_text.withAlpha(0.2f);
     drawPixelHeadphone(g, auditionButton.getX(), auditionButton.getY() + 2, 2, earColor);
     g.setColour(earColor); g.setFont(12.0f);
@@ -341,17 +310,17 @@ void NewProjectAudioProcessorEditor::paint (juce::Graphics& g)
     g.setColour (c_accent.brighter(0.2f)); g.setFont (juce::FontOptions ("Arial", 24.0f, juce::Font::bold | juce::Font::italic)); g.drawText ("SPLENTA", 800, 550, 120, 30, juce::Justification::right);
     g.setFont (juce::FontOptions(10.0f)); g.setColour (c_text.withAlpha(0.8f)); g.drawText ("AUDIO TOOLS", 800, 575, 100, 10, juce::Justification::right);
     g.setColour (c_accent); g.fillRect (835, 572, 65, 2);
-    g.setColour(c_text.withAlpha(0.5f)); g.drawText("Theme:", 740, 5, 50, 20, juce::Justification::right); g.drawText("Preset:", 80, 5, 50, 20, juce::Justification::left);
+    g.setColour(c_text.withAlpha(0.5f)); g.drawText("Preset:", 80, 5, 50, 20, juce::Justification::left);
 }
 
 void NewProjectAudioProcessorEditor::resized()
 {
     int startY = 290; int colW = 220; int knobSize = 65; int gap = 85;
-    themeBox.setBounds(790, 5, 120, 20);
+    themeSelector.setBounds(790, 5, 150, 24);
     presetBox.setBounds(130, 5, 150, 20);
     int totalW = 960 - 20;
     int splitX = 10 + (int)(totalW * (showFFT ? splitRatio : 1.0f));
-    expandButton.setBounds(splitX - 12, 98, 24, 24); // Circular 24x24px
+    expandButton.setBounds(splitX - 12, 98, 24, 24);
     agmButton.setBounds(860, 250, 80, 25); clipButton.setBounds(860, 290, 80, 25);
     threshSlider.setBounds (20, startY, knobSize, knobSize); ceilingSlider.setBounds(100, startY, knobSize, knobSize); relSlider.setBounds(20, startY + gap, knobSize, knobSize); waitSlider.setBounds(100, startY + gap, knobSize, knobSize); freqSlider.setBounds(20, startY + gap*2, knobSize, knobSize); qSlider.setBounds(100, startY + gap*2, knobSize, knobSize); auditionButton.setBounds(20, startY + gap*3, 40, 25);
     startFreqSlider.setBounds (20 + colW, startY, knobSize, knobSize); peakFreqSlider.setBounds(100 + colW, startY, knobSize, knobSize); satSlider.setBounds(20 + colW, startY + gap, knobSize, knobSize); noiseSlider.setBounds(100 + colW, startY + gap, knobSize, knobSize); shapeBox.setBounds(20 + colW, startY + gap*2, 150, 25);
