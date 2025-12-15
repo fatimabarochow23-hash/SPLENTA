@@ -17,6 +17,10 @@
     <FILE id="kL5fQ8" name="EnvelopeView.h" compile="0" resource="0" file="Source/EnvelopeView.h"/>
     <FILE id="rIIlRv" name="Theme.h" compile="0" resource="0" file="Source/Theme.h"/>
     <FILE id="zWZxBH" name="ThemeSelector.h" compile="0" resource="0" file="Source/ThemeSelector.h"/>
+    <FILE id="sLaF01" name="StealthLookAndFeel.cpp" compile="1" resource="0"
+          file="Source/StealthLookAndFeel.cpp"/>
+    <FILE id="sLaF02" name="StealthLookAndFeel.h" compile="0" resource="0"
+          file="Source/StealthLookAndFeel.h"/>
   </MAINGROUP>
   <MODULES>
     <MODULE id="juce_analytics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>

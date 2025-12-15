@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    PluginEditor.cpp (SPLENTA V18.6 - 20251215.03)
-    Theme System: External Change Synchronization
+    PluginEditor.cpp (SPLENTA V18.6 - 20251215.04)
+    Custom LookAndFeel: Knob & Fader Interactive Feedback
   ==============================================================================
 */
 
@@ -85,12 +85,19 @@ NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor (NewProjectAudioP
 
     addAndMakeVisible(envelopeView);
 
+    // Apply custom LookAndFeel
+    setLookAndFeel(&stealthLnF);
+
     setSize (960, 620);
     startTimerHz(60);
     updateColors();
 }
 
-NewProjectAudioProcessorEditor::~NewProjectAudioProcessorEditor() { stopTimer(); }
+NewProjectAudioProcessorEditor::~NewProjectAudioProcessorEditor()
+{
+    setLookAndFeel(nullptr);
+    stopTimer();
+}
 
 void NewProjectAudioProcessorEditor::setupKnob(juce::Slider& slider, const juce::String& id, std::unique_ptr<SliderAttachment>& attachment, const juce::String& suffix)
 {
@@ -101,6 +108,10 @@ void NewProjectAudioProcessorEditor::setupKnob(juce::Slider& slider, const juce:
     slider.setColour(juce::Slider::textBoxTextColourId, juce::Colours::white.withAlpha(0.9f));
     slider.setColour(juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
     slider.setColour(juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
+
+    // Set rotary angle range to match Web version (-145° to +145°)
+    slider.setRotaryParameters(juce::degreesToRadians(-145.0f), juce::degreesToRadians(145.0f), true);
+
     attachment.reset(new SliderAttachment(*audioProcessor.apvts, id, slider));
 }
 
@@ -109,6 +120,9 @@ void NewProjectAudioProcessorEditor::updateColors()
     // Read theme index from THEME parameter
     int themeIndex = (int)audioProcessor.apvts->getRawParameterValue("THEME")->load();
     auto palette = ThemePalette::getPaletteByIndex(themeIndex);
+
+    // Update custom LookAndFeel with new palette
+    stealthLnF.setPalette(palette);
 
     // Update ThemeSelector
     themeSelector.setSelectedIndex(themeIndex);

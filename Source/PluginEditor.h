@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    PluginEditor.h (SPLENTA V18.6 - 20251215.03)
-    Theme System: External Change Synchronization
+    PluginEditor.h (SPLENTA V18.6 - 20251215.04)
+    Custom LookAndFeel: Knob & Fader Interactive Feedback
   ==============================================================================
 */
 
@@ -12,6 +12,7 @@
 #include "EnvelopeView.h"
 #include "ThemeSelector.h"
 #include "Theme.h"
+#include "StealthLookAndFeel.h"
 
 class NewProjectAudioProcessorEditor  : public juce::AudioProcessorEditor,
                                         public juce::Timer
@@ -80,6 +81,9 @@ private:
 
     // Theme change detection
     int lastThemeIndex = -1;
+
+    // Custom LookAndFeel for interactive feedback
+    StealthLookAndFeel stealthLnF;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (NewProjectAudioProcessorEditor)
 };
