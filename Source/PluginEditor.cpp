@@ -104,9 +104,8 @@ void NewProjectAudioProcessorEditor::setupKnob(juce::Slider& slider, const juce:
 
     attachment.reset(new SliderAttachment(*audioProcessor.apvts, id, slider));
 
-    // Set initial alpha to 0 for show-on-interaction behavior
-    if (auto* tb = slider.getTextBox())
-        tb->setAlpha(0.0f);
+    // Initialize alpha to 0 for show-on-interaction behavior
+    knobTextAlpha[&slider] = 0.0f;
 }
 
 void NewProjectAudioProcessorEditor::updateColors()
@@ -124,12 +123,15 @@ void NewProjectAudioProcessorEditor::updateColors()
     // Update EnvelopeView colors
     envelopeView.setThemeColors(palette.accent, palette.panel900);
 
-    // Apply colors to sliders (use accent for text box color)
+    // Apply colors to sliders (use accent with alpha from map for text box color)
     auto apply = [&](juce::Slider& s) {
         s.setColour(juce::Slider::thumbColourId, palette.accent);
         s.setColour(juce::Slider::rotarySliderFillColourId, palette.accent);
         s.setColour(juce::Slider::rotarySliderOutlineColourId, palette.panel900.brighter(0.2f));
-        s.setColour(juce::Slider::textBoxTextColourId, palette.accent);
+
+        // Apply text color with current alpha
+        float alpha = knobTextAlpha[&s];
+        s.setColour(juce::Slider::textBoxTextColourId, palette.accent.withAlpha(alpha));
     };
     apply(threshSlider); apply(ceilingSlider); apply(relSlider); apply(waitSlider); apply(freqSlider); apply(qSlider);
     apply(startFreqSlider); apply(peakFreqSlider); apply(satSlider); apply(noiseSlider);
@@ -178,12 +180,18 @@ void NewProjectAudioProcessorEditor::timerCallback()
     }
 
     // Knob value show-on-interaction with fade effect
-    auto updateKnobAlpha = [](juce::Slider& slider) {
-        if (auto* tb = slider.getTextBox()) {
-            float targetAlpha = slider.isMouseButtonDown() ? 1.0f : 0.0f;
-            float currentAlpha = tb->getAlpha();
-            float newAlpha = currentAlpha + (targetAlpha - currentAlpha) * 0.2f;
-            tb->setAlpha(newAlpha);
+    auto palette = ThemePalette::getPaletteByIndex(currentThemeIndex);
+    bool needsColorUpdate = false;
+
+    auto updateKnobAlpha = [&](juce::Slider& slider) {
+        float targetAlpha = slider.isMouseButtonDown() ? 1.0f : 0.0f;
+        float& currentAlpha = knobTextAlpha[&slider];
+        float newAlpha = currentAlpha + (targetAlpha - currentAlpha) * 0.2f;
+
+        if (std::abs(newAlpha - currentAlpha) > 0.001f) {
+            currentAlpha = newAlpha;
+            slider.setColour(juce::Slider::textBoxTextColourId, palette.accent.withAlpha(currentAlpha));
+            needsColorUpdate = true;
         }
     };
 

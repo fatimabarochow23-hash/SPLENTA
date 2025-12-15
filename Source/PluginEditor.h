@@ -72,5 +72,8 @@ private:
     // Custom LookAndFeel for interactive feedback
     StealthLookAndFeel stealthLnF;
 
+    // Knob value alpha tracking for fade effect
+    std::map<juce::Slider*, float> knobTextAlpha;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (NewProjectAudioProcessorEditor)
 };
