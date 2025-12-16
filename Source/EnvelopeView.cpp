@@ -86,12 +86,12 @@ void EnvelopeView::paint(juce::Graphics& g)
 
     // Draw Threshold line (dashed white, as per standard)
     g.setColour(juce::Colour(0xFFFFFFFF));  // White
-    juce::Path thresholdPath;
+    juce::Path thresholdPath, dashedPath;
     thresholdPath.startNewSubPath(0.0f, thresholdY);
     thresholdPath.lineTo(width, thresholdY);
     float dashLengths[] = {4.0f, 4.0f};  // Dash pattern: 4px on, 4px off
-    g.strokePath(thresholdPath, juce::PathStrokeType(1.0f, juce::PathStrokeType::mitered, juce::PathStrokeType::butt),
-                 juce::AffineTransform(), dashLengths, 2);
+    juce::PathStrokeType(1.0f).createDashedStroke(dashedPath, thresholdPath, dashLengths, 2);
+    g.strokePath(dashedPath, juce::PathStrokeType(1.0f));
     g.setColour(juce::Colour(0xFFFFFFFF).withAlpha(0.8f));
     g.drawText("THR", 5, (int)thresholdY + 2, 30, 10, juce::Justification::left, false);
 
