@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    PluginEditor.cpp (SPLENTA V18.6 - 20251216.09)
-    Batch 06: Custom Controls (Waveform & Split-Toggle)
+    PluginEditor.cpp (SPLENTA V18.7 - 20251216.10)
+    Batch 06: Custom Controls (Waveform & Split-Toggle) + Web-Style Header
   ==============================================================================
 */
 
@@ -13,6 +13,12 @@ NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor (NewProjectAudioP
     : AudioProcessorEditor (&p), audioProcessor (p), envelopeView(p),
       waveformSelector(*p.apvts), splitToggle(*p.apvts)
 {
+    // Custom components (Batch 06) - Add BEFORE sliders to ensure on top
+    addAndMakeVisible(waveformSelector);
+    waveformSelector.setAlwaysOnTop(true);
+    addAndMakeVisible(splitToggle);
+    splitToggle.setAlwaysOnTop(true);
+
     setupKnob(threshSlider, "THRESHOLD", threshAtt, " dB");
     setupKnob(ceilingSlider,"CEILING",   ceilingAtt," dB");
     setupKnob(relSlider,    "DET_REL",   relAtt,    " ms");
@@ -37,10 +43,6 @@ NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor (NewProjectAudioP
     setupKnob(drySlider,     "DRY_MIX",  dryAtt,     " %");
     setupKnob(mixSlider,     "MIX",      mixAtt,     " %");
 
-    // Custom components (Batch 06)
-    addAndMakeVisible(waveformSelector);
-    addAndMakeVisible(splitToggle);
-
     addAndMakeVisible(auditionButton);
     auditionButton.setClickingTogglesState(true);
     auditionButton.setAlpha(0.0f);
@@ -55,16 +57,61 @@ NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor (NewProjectAudioP
         updateColors();
     };
 
-    addAndMakeVisible(presetBox);
-    presetBox.setText("Preset");
-    presetBox.addSectionHeading("Realistic");
-    presetBox.addItem("Gunshot", 1);
-    presetBox.addItem("Sword", 2);
-    presetBox.addSeparator();
-    presetBox.addSectionHeading("Sci-Fi");
-    presetBox.addItem("Laser", 3);
-    presetBox.addItem("Pulse", 4);
-    presetBox.onChange = [this] { if(presetBox.getSelectedId()>0) audioProcessor.loadPreset(presetBox.getSelectedId()); };
+    // Web-Style Header (Batch 06 Task 3)
+    addAndMakeVisible(logoLabel);
+    logoLabel.setText("SPLENTA", juce::dontSendNotification);
+    logoLabel.setFont(stealthLnF.getMonospaceFont(18.0f).withStyle(juce::Font::bold));
+    logoLabel.setJustificationType(juce::Justification::centredLeft);
+    logoLabel.setColour(juce::Label::textColourId, juce::Colours::white.withAlpha(0.9f));
+
+    addAndMakeVisible(presetNameLabel);
+    presetNameLabel.setText("-- No Preset --", juce::dontSendNotification);
+    presetNameLabel.setFont(stealthLnF.getMonospaceFont(12.0f));
+    presetNameLabel.setJustificationType(juce::Justification::centred);
+    presetNameLabel.setColour(juce::Label::textColourId, juce::Colours::white.withAlpha(0.7f));
+
+    addAndMakeVisible(saveButton);
+    saveButton.setButtonText("SAVE");
+    saveButton.setColour(juce::TextButton::buttonColourId, juce::Colours::transparentBlack);
+    saveButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white.withAlpha(0.6f));
+    saveButton.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
+    saveButton.onClick = [this] {
+        // Placeholder: save preset logic
+        presetNameLabel.setText("Custom Preset", juce::dontSendNotification);
+    };
+
+    addAndMakeVisible(loadButton);
+    loadButton.setButtonText("LOAD");
+    loadButton.setColour(juce::TextButton::buttonColourId, juce::Colours::transparentBlack);
+    loadButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white.withAlpha(0.6f));
+    loadButton.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
+    loadButton.onClick = [this] {
+        // Create popup menu with presets
+        juce::PopupMenu menu;
+        menu.addSectionHeading("Realistic");
+        menu.addItem(1, "Gunshot");
+        menu.addItem(2, "Sword");
+        menu.addSeparator();
+        menu.addSectionHeading("Sci-Fi");
+        menu.addItem(3, "Laser");
+        menu.addItem(4, "Pulse");
+
+        menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&loadButton),
+                           [this](int result) {
+                               if (result > 0) {
+                                   audioProcessor.loadPreset(result);
+                                   // Update preset name
+                                   juce::String presetName;
+                                   switch(result) {
+                                       case 1: presetName = "Gunshot"; break;
+                                       case 2: presetName = "Sword"; break;
+                                       case 3: presetName = "Laser"; break;
+                                       case 4: presetName = "Pulse"; break;
+                                   }
+                                   presetNameLabel.setText(presetName, juce::dontSendNotification);
+                               }
+                           });
+    };
 
     addAndMakeVisible(envelopeView);
     addAndMakeVisible(energyTopology);
@@ -339,28 +386,28 @@ void NewProjectAudioProcessorEditor::paint (juce::Graphics& g)
     drawLabel(duckSlider, "Duck"); drawLabel(duckAttSlider, "D.Att"); drawLabel(duckDecSlider, "D.Dec");
     drawLabel(wetSlider, "Wet"); drawLabel(drySlider, "Dry"); drawLabel(mixSlider, "Mix");
 
-    // Branding
-    g.setColour(c_accent.brighter(0.2f));
-    g.setFont(juce::FontOptions("Arial", 24.0f, juce::Font::bold | juce::Font::italic));
-    g.drawText("SPLENTA", 800, 550, 120, 30, juce::Justification::right);
+    // Branding (removed, now in logoLabel)
     g.setFont(juce::FontOptions(10.0f));
     g.setColour(c_text.withAlpha(0.8f));
     g.drawText("AUDIO TOOLS", 800, 575, 100, 10, juce::Justification::right);
     g.setColour(c_accent);
     g.fillRect(835, 572, 65, 2);
-    g.setColour(c_text.withAlpha(0.5f));
-    g.drawText("Preset:", 80, 5, 50, 20, juce::Justification::left);
 }
 
 void NewProjectAudioProcessorEditor::resized()
 {
     int startY = 290; int colW = 220; int knobSize = 60; int gap = 92;  // Reduced knob size, increased spacing
+
+    // Web-Style Header (top bar)
+    logoLabel.setBounds(10, 5, 120, 24);
+    presetNameLabel.setBounds(300, 5, 200, 24);
+    saveButton.setBounds(520, 5, 60, 24);
+    loadButton.setBounds(590, 5, 60, 24);
     themeSelector.setBounds(790, 5, 150, 24);
-    presetBox.setBounds(130, 5, 150, 20);
 
     // Custom components (Batch 06)
     waveformSelector.setBounds(20 + colW, startY + gap*2, 150, 28);  // Replace shapeBox
-    splitToggle.setBounds(20 + colW*3, startY + gap*3, 80, 80);      // In Output panel
+    splitToggle.setBounds(850, startY, 75, 75);  // Output panel right side, no overlap
 
     // Energy Topology bounds (matches paint() panel calculation)
     const int margin = 10;

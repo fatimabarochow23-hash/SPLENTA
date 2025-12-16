@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    StealthLookAndFeel.cpp (SPLENTA V18.6 - 20251215.04)
-    Custom LookAndFeel for Knob & Fader Interactive Feedback
+    StealthLookAndFeel.cpp (SPLENTA V18.7 - 20251216.10)
+    Custom LookAndFeel for Knob & Fader Interactive Feedback + JetBrains Mono
   ==============================================================================
 */
 
@@ -11,6 +11,10 @@ StealthLookAndFeel::StealthLookAndFeel()
 {
     // Initialize with default Bronze palette
     palette = ThemePalette::getPaletteByIndex(0);
+
+    // Try to set JetBrains Mono as default font
+    auto monoFont = getMonospaceFont();
+    setDefaultSansSerifTypeface(monoFont.getTypeface());
 }
 
 void StealthLookAndFeel::setPalette(const ThemePalette& newPalette)
@@ -108,4 +112,29 @@ void StealthLookAndFeel::drawLinearSlider(juce::Graphics& g,
     // Draw cap line (always accent)
     g.setColour(palette.accent);
     g.fillRoundedRectangle(trackX - 2.0f, sliderPos - 1.0f, trackWidth + 4.0f, 2.0f, 1.0f);
+}
+
+juce::Font StealthLookAndFeel::getMonospaceFont(float height) const
+{
+    // Try to find JetBrains Mono font on the system
+    juce::StringArray fontNames = juce::Font::findAllTypefaceNames();
+
+    for (const auto& name : fontNames)
+    {
+        if (name.containsIgnoreCase("JetBrains") && name.containsIgnoreCase("Mono"))
+        {
+            return juce::Font(name, height, juce::Font::plain);
+        }
+    }
+
+    // Fallback to system monospace fonts
+    if (fontNames.contains("Menlo"))
+        return juce::Font("Menlo", height, juce::Font::plain);
+    if (fontNames.contains("Monaco"))
+        return juce::Font("Monaco", height, juce::Font::plain);
+    if (fontNames.contains("Consolas"))
+        return juce::Font("Consolas", height, juce::Font::plain);
+
+    // Final fallback to JUCE's default monospace
+    return juce::Font(juce::Font::getDefaultMonospacedFontName(), height, juce::Font::plain);
 }

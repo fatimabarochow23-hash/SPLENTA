@@ -19,20 +19,20 @@
     <FILE id="egU94Z" name="EnvelopeView.cpp" compile="1" resource="0"
           file="Source/EnvelopeView.cpp"/>
     <FILE id="kL5fQ8" name="EnvelopeView.h" compile="0" resource="0" file="Source/EnvelopeView.h"/>
+    <FILE id="dXvaxw" name="SplitToggleComponent.cpp" compile="1" resource="0"
+          file="Source/SplitToggleComponent.cpp"/>
+    <FILE id="AKFDcx" name="SplitToggleComponent.h" compile="0" resource="0"
+          file="Source/SplitToggleComponent.h"/>
     <FILE id="oFGYh8" name="StealthLookAndFeel.cpp" compile="1" resource="0"
           file="Source/StealthLookAndFeel.cpp"/>
     <FILE id="fQ9a5W" name="StealthLookAndFeel.h" compile="0" resource="0"
           file="Source/StealthLookAndFeel.h"/>
     <FILE id="rIIlRv" name="Theme.h" compile="0" resource="0" file="Source/Theme.h"/>
     <FILE id="zWZxBH" name="ThemeSelector.h" compile="0" resource="0" file="Source/ThemeSelector.h"/>
-    <FILE id="wfSel1" name="WaveformSelectorComponent.cpp" compile="1" resource="0"
-          file="Source/WaveformSelectorComponent.cpp"/>
-    <FILE id="wfSel2" name="WaveformSelectorComponent.h" compile="0" resource="0"
+    <FILE id="SxUEGh" name="WaveformSelectorComponent.cpp" compile="1"
+          resource="0" file="Source/WaveformSelectorComponent.cpp"/>
+    <FILE id="BVuryF" name="WaveformSelectorComponent.h" compile="0" resource="0"
           file="Source/WaveformSelectorComponent.h"/>
-    <FILE id="spTgl1" name="SplitToggleComponent.cpp" compile="1" resource="0"
-          file="Source/SplitToggleComponent.cpp"/>
-    <FILE id="spTgl2" name="SplitToggleComponent.h" compile="0" resource="0"
-          file="Source/SplitToggleComponent.h"/>
   </MAINGROUP>
   <MODULES>
     <MODULE id="juce_analytics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>

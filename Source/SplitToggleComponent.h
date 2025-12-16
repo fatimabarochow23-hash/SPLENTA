@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    SplitToggleComponent.h (SPLENTA V18.6 - 20251216.09)
-    Batch 06: Split Dual Toggle (Diagonal Split Button)
+    SplitToggleComponent.h (SPLENTA V18.7 - 20251216.10)
+    Batch 06: Split Dual Toggle (Diagonal Split Button with A/C)
   ==============================================================================
 */
 

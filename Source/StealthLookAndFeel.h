@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    StealthLookAndFeel.h (SPLENTA V18.6 - 20251215.04)
-    Custom LookAndFeel for Knob & Fader Interactive Feedback
+    StealthLookAndFeel.h (SPLENTA V18.7 - 20251216.10)
+    Custom LookAndFeel for Knob & Fader Interactive Feedback + JetBrains Mono
   ==============================================================================
 */
 
@@ -31,6 +31,9 @@ public:
                           float maxSliderPos,
                           const juce::Slider::SliderStyle style,
                           juce::Slider& slider) override;
+
+    // Get JetBrains Mono font (fallback to monospace if not available)
+    juce::Font getMonospaceFont(float height = 14.0f) const;
 
 private:
     ThemePalette palette;

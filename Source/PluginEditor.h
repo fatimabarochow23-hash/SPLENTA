@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    PluginEditor.h (SPLENTA V18.6 - 20251216.09)
-    Batch 06: Custom Controls (Waveform & Split-Toggle)
+    PluginEditor.h (SPLENTA V18.7 - 20251216.10)
+    Batch 06: Custom Controls (Waveform & Split-Toggle) + Web-Style Header
   ==============================================================================
 */
 
@@ -52,7 +52,11 @@ private:
     WaveformSelectorComponent waveformSelector;
     SplitToggleComponent splitToggle;
 
-    juce::ComboBox presetBox;
+    // Web-Style Header (Batch 06 Task 3)
+    juce::Label logoLabel;
+    juce::TextButton saveButton;
+    juce::TextButton loadButton;
+    juce::Label presetNameLabel;
 
     // Theme selector (replaces old themeBox)
     ThemeSelector themeSelector;
