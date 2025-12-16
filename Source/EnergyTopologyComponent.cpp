@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    EnergyTopologyComponent.cpp (SPLENTA V18.6 - 20251216.06)
-    Energy Topology: Mobius Visualizer (Canvas to JUCE Graphics Port)
+    EnergyTopologyComponent.cpp (SPLENTA V18.6 - 20251216.07)
+    Energy Topology: Mobius Visualizer (Cartesian Trek Update)
   ==============================================================================
 */
 
@@ -95,7 +95,7 @@ void EnergyTopologyComponent::paint(juce::Graphics& g)
     }
     else if (palette.accent.getRed() > 200 && palette.accent.getGreen() < 100) {
         // Pink (FF3399 - high R, low G)
-        drawSakura(g, width, height, cx, cy);
+        drawCartesian(g, width, height, cx, cy);
     }
     else {
         // Default: Bronze
@@ -358,43 +358,101 @@ void EnergyTopologyComponent::drawNetwork(juce::Graphics& g, float width, float 
     }
 }
 
-// 5. PINK: SAKURA VORTEX
-void EnergyTopologyComponent::drawSakura(juce::Graphics& g, float width, float height, float cx, float cy)
+// --- 3D PROJECTION HELPER ---
+EnergyTopologyComponent::Projection3D EnergyTopologyComponent::project3D(float x, float y, float z, float cx, float cy)
 {
-    float scale = juce::jmin(width, height) * 0.4f;
+    float rotY = time * 0.3f;
+    float rotX = time * 0.2f;
+
+    // Rotate Y
+    float tx = x * std::cos(rotY) - z * std::sin(rotY);
+    float tz = x * std::sin(rotY) + z * std::cos(rotY);
+
+    // Rotate X
+    float ty = y * std::cos(rotX) - tz * std::sin(rotX);
+    tz = y * std::sin(rotX) + tz * std::cos(rotX);
+
+    // Perspective
+    const float fov = 1000.0f;
+    float scale2d = fov / (fov - tz + 0.001f); // Avoid divide by zero
+
+    Projection3D result;
+    result.x = cx + tx * scale2d;
+    result.y = cy + ty * scale2d;
+    result.scale = scale2d;
+    result.z = tz;
+    return result;
+}
+
+// 5. PINK: 3D CARTESIAN TREK
+void EnergyTopologyComponent::drawCartesian(juce::Graphics& g, float width, float height, float cx, float cy)
+{
+    float scale = juce::jmin(width, height) * 0.35f;
     float normalizedIntensity = intensity / 100.0f;
 
-    juce::Random random;
+    // 1. Draw Lissajous Knot Curve
+    juce::Path curvePath;
+    bool firstPoint = true;
+    const int samples = 150;
 
-    for (int i = 0; i < numParticles; ++i)
+    for (int i = 0; i <= samples; ++i)
     {
-        auto& p = particles[i];
+        float t = (i / (float)samples) * juce::MathConstants<float>::twoPi;
 
-        // Spiral Motion
-        p.life -= 0.005f;
-        if (p.life < 0.0f) {
-            p.life = 1.0f;
-            p.radius = random.nextFloat() * scale * 1.5f;
+        // Lissajous Knot equations
+        float x3d = scale * (std::sin(t) + 2.0f * std::sin(2.0f * t)) / 2.5f;
+        float y3d = scale * (std::cos(t) - 2.0f * std::cos(2.0f * t)) / 2.5f;
+        float z3d = scale * (-std::sin(3.0f * t)) / 2.0f;
+
+        auto proj = project3D(x3d, y3d, z3d, cx, cy);
+
+        if (firstPoint) {
+            curvePath.startNewSubPath(proj.x, proj.y);
+            firstPoint = false;
+        } else {
+            curvePath.lineTo(proj.x, proj.y);
         }
+    }
 
-        float r = p.radius * p.life; // Spiral in
-        float angle = p.angle + time * (1.0f + normalizedIntensity);
+    // Draw curve with glow
+    g.setColour(getColorWithAlpha(0.3f + normalizedIntensity * 0.3f));
+    g.strokePath(curvePath, juce::PathStrokeType(2.0f));
 
-        float x = cx + r * std::cos(angle);
-        float y = cy + r * std::sin(angle);
+    // 2. Draw Traveler (moving dot on the curve)
+    float travelerT = std::fmod(time * 0.5f, juce::MathConstants<float>::twoPi);
+    float tx3d = scale * (std::sin(travelerT) + 2.0f * std::sin(2.0f * travelerT)) / 2.5f;
+    float ty3d = scale * (std::cos(travelerT) - 2.0f * std::cos(2.0f * travelerT)) / 2.5f;
+    float tz3d = scale * (-std::sin(3.0f * travelerT)) / 2.0f;
 
-        // Petal orientation (tumbling)
-        float tumble = time * 5.0f + i;
+    auto travelerProj = project3D(tx3d, ty3d, tz3d, cx, cy);
 
-        // Draw Petal (Simple Ellipse)
-        float alpha = std::sin(p.life * juce::MathConstants<float>::pi); // Fade in/out
-        g.setColour(getColorWithAlpha(alpha * 0.8f));
+    // Flash effect
+    float beatCycle = std::fmod(time * 1.5f, 2.0f);
+    bool isFlash = beatCycle < 0.2f;
+    float flashAlpha = isFlash ? 1.0f : 0.6f;
 
-        juce::AffineTransform transform = juce::AffineTransform::rotation(tumble, x, y);
-        juce::Path petalPath;
-        petalPath.addEllipse(-( 4.0f + normalizedIntensity * 2.0f), -2.0f,
-                            (4.0f + normalizedIntensity * 2.0f) * 2.0f, 4.0f);
-        petalPath.applyTransform(transform.translated(x, y));
-        g.fillPath(petalPath);
+    g.setColour(getColorWithAlpha(flashAlpha));
+    float travelerSize = 4.0f + normalizedIntensity * 3.0f;
+    g.fillEllipse(travelerProj.x - travelerSize, travelerProj.y - travelerSize,
+                  travelerSize * 2.0f, travelerSize * 2.0f);
+
+    // 3. Draw Grid Scanner around traveler
+    const int gridSize = 5;
+    const float gridSpacing = 20.0f;
+
+    g.setColour(getColorWithAlpha(0.15f + normalizedIntensity * 0.15f));
+    for (int gx = -gridSize; gx <= gridSize; ++gx)
+    {
+        for (int gy = -gridSize; gy <= gridSize; ++gy)
+        {
+            float gridX3d = tx3d + gx * gridSpacing;
+            float gridY3d = ty3d + gy * gridSpacing;
+            float gridZ3d = tz3d;
+
+            auto gridProj = project3D(gridX3d, gridY3d, gridZ3d, cx, cy);
+
+            float dotSize = 1.0f;
+            g.fillRect(gridProj.x - dotSize, gridProj.y - dotSize, dotSize * 2.0f, dotSize * 2.0f);
+        }
     }
 }

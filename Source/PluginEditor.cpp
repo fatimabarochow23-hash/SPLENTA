@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    PluginEditor.cpp (SPLENTA V18.6 - 20251216.06)
-    Batch 04: Energy Topology (Mobius Visualizer Integration)
+    PluginEditor.cpp (SPLENTA V18.6 - 20251216.07)
+    Batch 05: Cartesian Trek & Panel Architecture
   ==============================================================================
 */
 
@@ -171,6 +171,72 @@ void NewProjectAudioProcessorEditor::drawPixelHeadphone(juce::Graphics& g, int x
     for(int r=0; r<8; ++r) for(int c=0; c<10; ++c) if(icon[r][c]=='1') g.fillRect(x+c*scale, y+r*scale, scale, scale);
 }
 
+void NewProjectAudioProcessorEditor::drawPanel(juce::Graphics& g, juce::Rectangle<int> bounds, const juce::String& title, bool isActive)
+{
+    // Get current theme
+    int themeIndex = (int)audioProcessor.apvts->getRawParameterValue("THEME")->load();
+    auto palette = ThemePalette::getPaletteByIndex(themeIndex);
+
+    const int headerHeight = 26;
+    auto headerArea = bounds.removeFromTop(headerHeight);
+    auto contentArea = bounds;
+
+    // Panel background (ultra-subtle white overlay)
+    g.setColour(juce::Colours::white.withAlpha(0.03f));
+    g.fillRect(contentArea);
+
+    // Header background
+    g.setColour(juce::Colours::black.withAlpha(0.2f));
+    g.fillRect(headerArea);
+
+    // Header bottom border
+    g.setColour(juce::Colours::white.withAlpha(0.05f));
+    g.drawLine(headerArea.getX(), headerArea.getBottom(),
+               headerArea.getRight(), headerArea.getBottom(), 1.0f);
+
+    // Corner accents (L-shaped decorations)
+    g.setColour(juce::Colours::white.withAlpha(0.1f));
+    const int cornerLen = 6;
+    auto fullBounds = headerArea.getUnion(contentArea);
+
+    // Top-left
+    g.drawLine(fullBounds.getX(), fullBounds.getY(),
+               fullBounds.getX() + cornerLen, fullBounds.getY(), 1.0f);
+    g.drawLine(fullBounds.getX(), fullBounds.getY(),
+               fullBounds.getX(), fullBounds.getY() + cornerLen, 1.0f);
+
+    // Top-right
+    g.drawLine(fullBounds.getRight() - cornerLen, fullBounds.getY(),
+               fullBounds.getRight(), fullBounds.getY(), 1.0f);
+    g.drawLine(fullBounds.getRight(), fullBounds.getY(),
+               fullBounds.getRight(), fullBounds.getY() + cornerLen, 1.0f);
+
+    // Bottom-left
+    g.drawLine(fullBounds.getX(), fullBounds.getBottom() - cornerLen,
+               fullBounds.getX(), fullBounds.getBottom(), 1.0f);
+    g.drawLine(fullBounds.getX(), fullBounds.getBottom(),
+               fullBounds.getX() + cornerLen, fullBounds.getBottom(), 1.0f);
+
+    // Bottom-right
+    g.drawLine(fullBounds.getRight(), fullBounds.getBottom() - cornerLen,
+               fullBounds.getRight(), fullBounds.getBottom(), 1.0f);
+    g.drawLine(fullBounds.getRight() - cornerLen, fullBounds.getBottom(),
+               fullBounds.getRight(), fullBounds.getBottom(), 1.0f);
+
+    // Title text
+    g.setColour(juce::Colours::white.withAlpha(0.4f));
+    g.setFont(juce::FontOptions(10.0f, juce::Font::bold));
+    g.drawText(title.toUpperCase(), headerArea.reduced(8, 0),
+               juce::Justification::centredLeft);
+
+    // Status dot
+    float dotSize = 4.0f;
+    float dotX = headerArea.getRight() - 12.0f;
+    float dotY = headerArea.getCentreY() - dotSize / 2.0f;
+    g.setColour(isActive ? palette.accent : juce::Colours::white.withAlpha(0.15f));
+    g.fillEllipse(dotX, dotY, dotSize, dotSize);
+}
+
 void NewProjectAudioProcessorEditor::timerCallback()
 {
     // Theme change detection (for host automation / state restore)
@@ -215,35 +281,43 @@ void NewProjectAudioProcessorEditor::paint (juce::Graphics& g)
     int themeIndex = (int)audioProcessor.apvts->getRawParameterValue("THEME")->load();
     auto palette = ThemePalette::getPaletteByIndex(themeIndex);
 
-    juce::Colour c_bg = palette.bg950;
-    juce::Colour c_panel = palette.panel900;
     juce::Colour c_accent = palette.accent;
-    juce::Colour c_glow = palette.glow;
     juce::Colour c_text = juce::Colours::white;
 
-    g.fillAll (c_bg);
+    // Global background (#140c08 - Dark Bronze)
+    g.fillAll(juce::Colour(0xFF140C08));
 
-    // Top visualization areas
-    int startX = 10; int topY = 30; int height = 200;
-    int envelopeWidth = 470;  // Half of original ~940
-    int topologyWidth = 460;   // Remaining width
+    // Define 4 panel areas (with spacing)
+    const int margin = 10;
+    const int spacing = 10;
+    const int topPanelHeight = 230;
+    const int bottomPanelHeight = 340;
 
-    envelopeArea = juce::Rectangle<int>(startX, topY, envelopeWidth, height);
-    topologyArea = juce::Rectangle<int>(startX + envelopeWidth + 10, topY, topologyWidth, height);
+    // Top row: Input Detector (Envelope) + Energy Topology
+    detectorPanel = juce::Rectangle<int>(margin, margin, 470, topPanelHeight);
+    topologyPanel = juce::Rectangle<int>(detectorPanel.getRight() + spacing, margin, 460, topPanelHeight);
 
-    // Envelope View panel
+    // Bottom row: Enforcer Core + Master Output
+    enforcerPanel = juce::Rectangle<int>(margin, detectorPanel.getBottom() + spacing, 660, bottomPanelHeight);
+    outputPanel = juce::Rectangle<int>(enforcerPanel.getRight() + spacing, detectorPanel.getBottom() + spacing, 280, bottomPanelHeight);
+
+    // Draw panels with industrial styling
+    drawPanel(g, detectorPanel, "INPUT DETECTOR", audioProcessor.isTriggeredUI);
+    drawPanel(g, topologyPanel, "ENERGY TOPOLOGY", true);
+    drawPanel(g, enforcerPanel, "ENFORCER CORE", true);
+    drawPanel(g, outputPanel, "MASTER OUTPUT", true);
+
+    // Position visualizers inside their panels (adjust for header)
+    const int headerHeight = 26;
+    envelopeArea = detectorPanel.withTrimmedTop(headerHeight).reduced(4);
+    topologyArea = topologyPanel.withTrimmedTop(headerHeight).reduced(4);
     envelopeView.setBounds(envelopeArea);
-    g.setColour (c_panel); g.fillRect (envelopeArea);
-    g.setColour (c_accent.withAlpha(0.2f)); g.drawRect (envelopeArea);
 
-    // Energy Topology panel background
-    g.setColour (c_panel); g.fillRect (topologyArea);
-    g.setColour (c_accent.withAlpha(0.2f)); g.drawRect (topologyArea);
-
-    // Trigger icon
+    // Trigger icon (inside detector panel)
     if (audioProcessor.isTriggeredUI) {
-        int iconX = envelopeArea.getRight() - 50;
-        drawPixelArt(g, iconX, 45, 4, c_accent, themeIndex);
+        int iconX = envelopeArea.getRight() - 40;
+        int iconY = envelopeArea.getY() + 10;
+        drawPixelArt(g, iconX, iconY, 4, c_accent, themeIndex);
     }
 
     // Audition button (headphone icon)
@@ -252,27 +326,40 @@ void NewProjectAudioProcessorEditor::paint (juce::Graphics& g)
     g.setColour(earColor); g.setFont(12.0f);
     g.drawText("Listen", auditionButton.getX() + 25, auditionButton.getY(), 50, 20, juce::Justification::left);
 
-    // Section labels
-    g.setColour (c_accent); g.setFont (juce::FontOptions(14.0f, juce::Font::bold));
-    int startY = 250; int colW = 220;
-    g.drawText ("// DETECTOR", 20, startY, 150, 20, juce::Justification::left);
-    g.drawText ("// GENERATOR", 20 + colW, startY, 150, 20, juce::Justification::left);
-    g.drawText ("// ENVELOPE",  20 + colW*2, startY, 150, 20, juce::Justification::left);
-    g.drawText ("// OUTPUT",    20 + colW*3, startY, 150, 20, juce::Justification::left);
+    // Section labels (inside Enforcer Core panel)
+    g.setColour(c_accent); g.setFont(juce::FontOptions(14.0f, juce::Font::bold));
+    int labelY = enforcerPanel.getY() + headerHeight + 8;
+    int colW = 220;
+    g.drawText("// DETECTOR", 20, labelY, 150, 20, juce::Justification::left);
+    g.drawText("// GENERATOR", 20 + colW, labelY, 150, 20, juce::Justification::left);
+    g.drawText("// ENVELOPE", 20 + colW*2, labelY, 150, 20, juce::Justification::left);
+
+    // Output section label (inside Output panel)
+    g.drawText("// OUTPUT", outputPanel.getX() + 20, labelY, 150, 20, juce::Justification::left);
 
     // Knob labels
-    g.setColour (c_text.withAlpha(0.8f)); g.setFont (juce::FontOptions(12.0f));
-    auto drawLabel = [&](juce::Slider& s, const juce::String& name) { g.drawText (name, s.getX(), s.getY() - 15, s.getWidth(), 15, juce::Justification::centred); };
-    drawLabel(threshSlider, "Thresh"); drawLabel(ceilingSlider, "Ceiling"); drawLabel(relSlider, "Rel"); drawLabel(waitSlider, "Wait"); drawLabel(freqSlider, "Freq"); drawLabel(qSlider, "Q");
+    g.setColour(c_text.withAlpha(0.8f)); g.setFont(juce::FontOptions(12.0f));
+    auto drawLabel = [&](juce::Slider& s, const juce::String& name) {
+        g.drawText(name, s.getX(), s.getY() - 15, s.getWidth(), 15, juce::Justification::centred);
+    };
+    drawLabel(threshSlider, "Thresh"); drawLabel(ceilingSlider, "Ceiling"); drawLabel(relSlider, "Rel");
+    drawLabel(waitSlider, "Wait"); drawLabel(freqSlider, "Freq"); drawLabel(qSlider, "Q");
     drawLabel(startFreqSlider, "Start"); drawLabel(peakFreqSlider, "Peak"); drawLabel(satSlider, "Sat"); drawLabel(noiseSlider, "Noise");
     drawLabel(pAttSlider, "P.Att"); drawLabel(pDecSlider, "P.Dec"); drawLabel(aAttSlider, "A.Att"); drawLabel(aDecSlider, "A.Dec");
-    drawLabel(duckSlider, "Duck"); drawLabel(duckAttSlider, "D.Att"); drawLabel(duckDecSlider, "D.Dec"); drawLabel(wetSlider, "Wet"); drawLabel(drySlider, "Dry"); drawLabel(mixSlider, "Mix");
+    drawLabel(duckSlider, "Duck"); drawLabel(duckAttSlider, "D.Att"); drawLabel(duckDecSlider, "D.Dec");
+    drawLabel(wetSlider, "Wet"); drawLabel(drySlider, "Dry"); drawLabel(mixSlider, "Mix");
 
     // Branding
-    g.setColour (c_accent.brighter(0.2f)); g.setFont (juce::FontOptions ("Arial", 24.0f, juce::Font::bold | juce::Font::italic)); g.drawText ("SPLENTA", 800, 550, 120, 30, juce::Justification::right);
-    g.setFont (juce::FontOptions(10.0f)); g.setColour (c_text.withAlpha(0.8f)); g.drawText ("AUDIO TOOLS", 800, 575, 100, 10, juce::Justification::right);
-    g.setColour (c_accent); g.fillRect (835, 572, 65, 2);
-    g.setColour(c_text.withAlpha(0.5f)); g.drawText("Preset:", 80, 5, 50, 20, juce::Justification::left);
+    g.setColour(c_accent.brighter(0.2f));
+    g.setFont(juce::FontOptions("Arial", 24.0f, juce::Font::bold | juce::Font::italic));
+    g.drawText("SPLENTA", 800, 550, 120, 30, juce::Justification::right);
+    g.setFont(juce::FontOptions(10.0f));
+    g.setColour(c_text.withAlpha(0.8f));
+    g.drawText("AUDIO TOOLS", 800, 575, 100, 10, juce::Justification::right);
+    g.setColour(c_accent);
+    g.fillRect(835, 572, 65, 2);
+    g.setColour(c_text.withAlpha(0.5f));
+    g.drawText("Preset:", 80, 5, 50, 20, juce::Justification::left);
 }
 
 void NewProjectAudioProcessorEditor::resized()
@@ -282,11 +369,14 @@ void NewProjectAudioProcessorEditor::resized()
     presetBox.setBounds(130, 5, 150, 20);
     agmButton.setBounds(860, 250, 80, 25); clipButton.setBounds(860, 290, 80, 25);
 
-    // Top visualization areas (match paint() calculation)
-    int startX = 10; int topY = 30; int height = 200;
-    int envelopeWidth = 470;
-    int topologyWidth = 460;
-    energyTopology.setBounds(startX + envelopeWidth + 10, topY, topologyWidth, height);
+    // Energy Topology bounds (matches paint() panel calculation)
+    const int margin = 10;
+    const int spacing = 10;
+    const int topPanelHeight = 230;
+    const int headerHeight = 26;
+
+    juce::Rectangle<int> topologyPanelArea(490, margin, 460, topPanelHeight);
+    energyTopology.setBounds(topologyPanelArea.withTrimmedTop(headerHeight).reduced(4));
 
     threshSlider.setBounds (20, startY, knobSize, knobSize); ceilingSlider.setBounds(100, startY, knobSize, knobSize); relSlider.setBounds(20, startY + gap, knobSize, knobSize); waitSlider.setBounds(100, startY + gap, knobSize, knobSize); freqSlider.setBounds(20, startY + gap*2, knobSize, knobSize); qSlider.setBounds(100, startY + gap*2, knobSize, knobSize); auditionButton.setBounds(20, startY + gap*3, 40, 25);
     startFreqSlider.setBounds (20 + colW, startY, knobSize, knobSize); peakFreqSlider.setBounds(100 + colW, startY, knobSize, knobSize); satSlider.setBounds(20 + colW, startY + gap, knobSize, knobSize); noiseSlider.setBounds(100 + colW, startY + gap, knobSize, knobSize); shapeBox.setBounds(20 + colW, startY + gap*2, 150, 25);

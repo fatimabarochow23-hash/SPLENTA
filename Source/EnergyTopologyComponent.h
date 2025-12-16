@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    EnergyTopologyComponent.h (SPLENTA V18.6 - 20251216.06)
-    Energy Topology: Mobius Visualizer (Canvas to JUCE Graphics Port)
+    EnergyTopologyComponent.h (SPLENTA V18.6 - 20251216.07)
+    Energy Topology: Mobius Visualizer (Cartesian Trek Update)
   ==============================================================================
 */
 
@@ -52,7 +52,13 @@ private:
     void drawWaves(juce::Graphics& g, float width, float height, float cx, float cy);
     void drawMoon(juce::Graphics& g, float width, float height, float cx, float cy);
     void drawNetwork(juce::Graphics& g, float width, float height, float cx, float cy);
-    void drawSakura(juce::Graphics& g, float width, float height, float cx, float cy);
+    void drawCartesian(juce::Graphics& g, float width, float height, float cx, float cy);
+
+    // 3D Projection helper
+    struct Projection3D {
+        float x, y, scale, z;
+    };
+    Projection3D project3D(float x, float y, float z, float cx, float cy);
 
     // Helper: Convert accent color to RGBA string equivalent
     juce::Colour getColorWithAlpha(float alpha);

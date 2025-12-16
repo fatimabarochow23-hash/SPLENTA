@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    PluginEditor.h (SPLENTA V18.6 - 20251216.06)
-    Batch 04: Energy Topology (Mobius Visualizer Integration)
+    PluginEditor.h (SPLENTA V18.6 - 20251216.07)
+    Batch 05: Cartesian Trek & Panel Architecture
   ==============================================================================
 */
 
@@ -67,6 +67,10 @@ private:
     void setupKnob(juce::Slider& slider, const juce::String& id, std::unique_ptr<SliderAttachment>& attachment, const juce::String& suffix);
     void drawPixelArt(juce::Graphics& g, int x, int y, int scale, juce::Colour c, int type);
     void drawPixelHeadphone(juce::Graphics& g, int x, int y, int scale, juce::Colour c);
+    void drawPanel(juce::Graphics& g, juce::Rectangle<int> bounds, const juce::String& title, bool isActive);
+
+    // Panel layout areas
+    juce::Rectangle<int> detectorPanel, enforcerPanel, topologyPanel, outputPanel;
 
     // Theme change detection
     int lastThemeIndex = -1;

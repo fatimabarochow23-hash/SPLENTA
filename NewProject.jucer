@@ -12,13 +12,13 @@
             file="Source/PluginEditor.cpp"/>
       <FILE id="ZCfkPl" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
     </GROUP>
+    <FILE id="raJmw4" name="EnergyTopologyComponent.cpp" compile="1" resource="0"
+          file="Source/EnergyTopologyComponent.cpp"/>
+    <FILE id="huQMlG" name="EnergyTopologyComponent.h" compile="0" resource="0"
+          file="Source/EnergyTopologyComponent.h"/>
     <FILE id="egU94Z" name="EnvelopeView.cpp" compile="1" resource="0"
           file="Source/EnvelopeView.cpp"/>
     <FILE id="kL5fQ8" name="EnvelopeView.h" compile="0" resource="0" file="Source/EnvelopeView.h"/>
-    <FILE id="eToCp1" name="EnergyTopologyComponent.cpp" compile="1" resource="0"
-          file="Source/EnergyTopologyComponent.cpp"/>
-    <FILE id="eToCp2" name="EnergyTopologyComponent.h" compile="0" resource="0"
-          file="Source/EnergyTopologyComponent.h"/>
     <FILE id="oFGYh8" name="StealthLookAndFeel.cpp" compile="1" resource="0"
           file="Source/StealthLookAndFeel.cpp"/>
     <FILE id="fQ9a5W" name="StealthLookAndFeel.h" compile="0" resource="0"
