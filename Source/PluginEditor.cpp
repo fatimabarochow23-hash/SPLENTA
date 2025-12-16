@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    PluginEditor.cpp (SPLENTA V18.6 - 20251216.07)
-    Batch 05: Cartesian Trek & Panel Architecture
+    PluginEditor.cpp (SPLENTA V18.6 - 20251216.08)
+    Batch 05.5: Visual Alignment & Theme Backgrounds
   ==============================================================================
 */
 
@@ -284,8 +284,8 @@ void NewProjectAudioProcessorEditor::paint (juce::Graphics& g)
     juce::Colour c_accent = palette.accent;
     juce::Colour c_text = juce::Colours::white;
 
-    // Global background (#140c08 - Dark Bronze)
-    g.fillAll(juce::Colour(0xFF140C08));
+    // Global background (theme-aware)
+    g.fillAll(palette.background());
 
     // Define 4 panel areas (with spacing)
     const int margin = 10;
@@ -364,7 +364,7 @@ void NewProjectAudioProcessorEditor::paint (juce::Graphics& g)
 
 void NewProjectAudioProcessorEditor::resized()
 {
-    int startY = 290; int colW = 220; int knobSize = 65; int gap = 85;
+    int startY = 290; int colW = 220; int knobSize = 60; int gap = 92;  // Reduced knob size, increased spacing
     themeSelector.setBounds(790, 5, 150, 24);
     presetBox.setBounds(130, 5, 150, 20);
     agmButton.setBounds(860, 250, 80, 25); clipButton.setBounds(860, 290, 80, 25);

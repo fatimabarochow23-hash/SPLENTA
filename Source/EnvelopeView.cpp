@@ -77,17 +77,22 @@ void EnvelopeView::paint(juce::Graphics& g)
     float thresholdY = height * (1.0f - thresholdVisual);
     float ceilingY = height * (1.0f - ceilingVisual);
 
-    // Draw Ceiling line (thin solid, subtle label)
-    g.setColour(referenceColour.withAlpha(0.5f));
+    // Draw Ceiling line (solid red, as per standard)
+    g.setColour(juce::Colour(0xFFFF4444));  // Red
     g.drawLine(0.0f, ceilingY, width, ceilingY, 1.0f);
     g.setFont(10.0f);
-    g.setColour(referenceColour.withAlpha(0.6f));
+    g.setColour(juce::Colour(0xFFFF4444).withAlpha(0.8f));
     g.drawText("CEIL", 5, (int)ceilingY - 12, 35, 10, juce::Justification::left, false);
 
-    // Draw Threshold line (thin solid, subtle label)
-    g.setColour(referenceColour.withAlpha(0.5f));
-    g.drawLine(0.0f, thresholdY, width, thresholdY, 1.0f);
-    g.setColour(referenceColour.withAlpha(0.6f));
+    // Draw Threshold line (dashed white, as per standard)
+    g.setColour(juce::Colour(0xFFFFFFFF));  // White
+    juce::Path thresholdPath;
+    thresholdPath.startNewSubPath(0.0f, thresholdY);
+    thresholdPath.lineTo(width, thresholdY);
+    float dashLengths[] = {4.0f, 4.0f};  // Dash pattern: 4px on, 4px off
+    g.strokePath(thresholdPath, juce::PathStrokeType(1.0f, juce::PathStrokeType::mitered, juce::PathStrokeType::butt),
+                 juce::AffineTransform(), dashLengths, 2);
+    g.setColour(juce::Colour(0xFFFFFFFF).withAlpha(0.8f));
     g.drawText("THR", 5, (int)thresholdY + 2, 30, 10, juce::Justification::left, false);
 
     // === Draw Detector Envelope (bottom layer, thicker) ===

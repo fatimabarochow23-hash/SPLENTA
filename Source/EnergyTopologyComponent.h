@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    EnergyTopologyComponent.h (SPLENTA V18.6 - 20251216.07)
-    Energy Topology: Mobius Visualizer (Cartesian Trek Update)
+    EnergyTopologyComponent.h (SPLENTA V18.6 - 20251216.08)
+    Energy Topology: Radial Gradient Glow Optimization
   ==============================================================================
 */
 

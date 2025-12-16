@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    EnergyTopologyComponent.cpp (SPLENTA V18.6 - 20251216.07)
-    Energy Topology: Mobius Visualizer (Cartesian Trek Update)
+    EnergyTopologyComponent.cpp (SPLENTA V18.6 - 20251216.08)
+    Energy Topology: Radial Gradient Glow Optimization
   ==============================================================================
 */
 
@@ -102,17 +102,19 @@ void EnergyTopologyComponent::paint(juce::Graphics& g)
         drawMobius(g, width, height, cx, cy);
     }
 
-    // Global glow overlay (radial gradient)
+    // Global glow overlay (radial gradient, matches Web radial-gradient)
     float normalizedIntensity = intensity / 100.0f;
-    float glowOpacity = 0.5f + normalizedIntensity / 2.0f;
+    float glowOpacity = 0.15f + normalizedIntensity * 0.15f; // Subtle glow
 
+    // Radial gradient from center (20% opacity) to 70% radius (transparent)
+    float radiusScale = width * 0.7f;
     juce::ColourGradient gradient(
-        palette.glow.withAlpha(glowOpacity * 0.2f), cx, cy,
-        juce::Colours::transparentBlack, cx + width * 0.7f, cy,
-        true
+        palette.accent.withAlpha(glowOpacity), cx, cy,
+        juce::Colours::transparentBlack, cx + radiusScale, cy,
+        true  // radial
     );
     g.setGradientFill(gradient);
-    g.fillEllipse(cx - width * 0.35f, cy - height * 0.35f, width * 0.7f, height * 0.7f);
+    g.fillRect(getLocalBounds());  // Fill entire component (no hard edges)
 }
 
 void EnergyTopologyComponent::resized()

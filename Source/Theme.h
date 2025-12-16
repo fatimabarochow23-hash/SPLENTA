@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    Theme.h (SPLENTA V18.6 - 20251215.02)
-    Theme System: Palette & Enum Definitions
+    Theme.h (SPLENTA V18.6 - 20251216.08)
+    Theme System: Palette & Enum Definitions (Background Support)
   ==============================================================================
 */
 
@@ -26,6 +26,9 @@ struct ThemePalette
     juce::Colour glow;
     juce::Colour bg950;
     juce::Colour panel900;
+
+    // Alias for semantic clarity
+    juce::Colour background() const { return bg950; }
 
     // Static factory method to get palette by theme type
     static ThemePalette getPalette(ThemeType theme)

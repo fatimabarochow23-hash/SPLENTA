@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    PluginEditor.h (SPLENTA V18.6 - 20251216.07)
-    Batch 05: Cartesian Trek & Panel Architecture
+    PluginEditor.h (SPLENTA V18.6 - 20251216.08)
+    Batch 05.5: Visual Alignment & Theme Backgrounds
   ==============================================================================
 */
 
