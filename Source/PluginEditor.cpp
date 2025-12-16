@@ -326,15 +326,15 @@ void NewProjectAudioProcessorEditor::paint (juce::Graphics& g)
     g.setColour(earColor); g.setFont(12.0f);
     g.drawText("Listen", auditionButton.getX() + 25, auditionButton.getY(), 50, 20, juce::Justification::left);
 
-    // Section labels (inside Enforcer Core panel)
+    // Section labels (below knobs, at bottom of panels)
     g.setColour(c_accent); g.setFont(juce::FontOptions(14.0f, juce::Font::bold));
-    int labelY = enforcerPanel.getY() + headerHeight + 8;
+    int labelY = 595;  // Bottom of knob area
     int colW = 220;
     g.drawText("// DETECTOR", 20, labelY, 150, 20, juce::Justification::left);
     g.drawText("// GENERATOR", 20 + colW, labelY, 150, 20, juce::Justification::left);
     g.drawText("// ENVELOPE", 20 + colW*2, labelY, 150, 20, juce::Justification::left);
 
-    // Output section label (inside Output panel)
+    // Output section label (at bottom of output panel)
     g.drawText("// OUTPUT", outputPanel.getX() + 20, labelY, 150, 20, juce::Justification::left);
 
     // Knob labels
