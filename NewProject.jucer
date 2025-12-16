@@ -25,6 +25,14 @@
           file="Source/StealthLookAndFeel.h"/>
     <FILE id="rIIlRv" name="Theme.h" compile="0" resource="0" file="Source/Theme.h"/>
     <FILE id="zWZxBH" name="ThemeSelector.h" compile="0" resource="0" file="Source/ThemeSelector.h"/>
+    <FILE id="wfSel1" name="WaveformSelectorComponent.cpp" compile="1" resource="0"
+          file="Source/WaveformSelectorComponent.cpp"/>
+    <FILE id="wfSel2" name="WaveformSelectorComponent.h" compile="0" resource="0"
+          file="Source/WaveformSelectorComponent.h"/>
+    <FILE id="spTgl1" name="SplitToggleComponent.cpp" compile="1" resource="0"
+          file="Source/SplitToggleComponent.cpp"/>
+    <FILE id="spTgl2" name="SplitToggleComponent.h" compile="0" resource="0"
+          file="Source/SplitToggleComponent.h"/>
   </MAINGROUP>
   <MODULES>
     <MODULE id="juce_analytics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>

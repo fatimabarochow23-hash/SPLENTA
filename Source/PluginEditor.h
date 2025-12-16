@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    PluginEditor.h (SPLENTA V18.6 - 20251216.08)
-    Batch 05.5: Visual Alignment & Theme Backgrounds
+    PluginEditor.h (SPLENTA V18.6 - 20251216.09)
+    Batch 06: Custom Controls (Waveform & Split-Toggle)
   ==============================================================================
 */
 
@@ -14,6 +14,8 @@
 #include "Theme.h"
 #include "StealthLookAndFeel.h"
 #include "EnergyTopologyComponent.h"
+#include "WaveformSelectorComponent.h"
+#include "SplitToggleComponent.h"
 
 class NewProjectAudioProcessorEditor  : public juce::AudioProcessorEditor,
                                         public juce::Timer
@@ -46,16 +48,14 @@ private:
     juce::Slider duckSlider, duckAttSlider, duckDecSlider, wetSlider, drySlider, mixSlider;
     std::unique_ptr<SliderAttachment> duckAtt, duckAttAtt, duckDecAtt, wetAtt, dryAtt, mixAtt;
 
-    juce::ComboBox shapeBox, presetBox;
-    std::unique_ptr<ComboBoxAttachment> shapeAtt;
+    // Custom components (Batch 06)
+    WaveformSelectorComponent waveformSelector;
+    SplitToggleComponent splitToggle;
+
+    juce::ComboBox presetBox;
 
     // Theme selector (replaces old themeBox)
     ThemeSelector themeSelector;
-
-    juce::TextButton agmButton { "Auto Gain" };
-    std::unique_ptr<ButtonAttachment> agmAtt;
-    juce::TextButton clipButton { "Soft Clip" };
-    std::unique_ptr<ButtonAttachment> clipAtt;
 
     juce::TextButton auditionButton { "" };
     std::unique_ptr<ButtonAttachment> auditionAtt;

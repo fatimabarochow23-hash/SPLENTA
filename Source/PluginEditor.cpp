@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    PluginEditor.cpp (SPLENTA V18.6 - 20251216.08)
-    Batch 05.5: Visual Alignment & Theme Backgrounds
+    PluginEditor.cpp (SPLENTA V18.6 - 20251216.09)
+    Batch 06: Custom Controls (Waveform & Split-Toggle)
   ==============================================================================
 */
 
@@ -10,7 +10,8 @@
 #include <cmath>
 
 NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor (NewProjectAudioProcessor& p)
-    : AudioProcessorEditor (&p), audioProcessor (p), envelopeView(p)
+    : AudioProcessorEditor (&p), audioProcessor (p), envelopeView(p),
+      waveformSelector(*p.apvts), splitToggle(*p.apvts)
 {
     setupKnob(threshSlider, "THRESHOLD", threshAtt, " dB");
     setupKnob(ceilingSlider,"CEILING",   ceilingAtt," dB");
@@ -36,9 +37,9 @@ NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor (NewProjectAudioP
     setupKnob(drySlider,     "DRY_MIX",  dryAtt,     " %");
     setupKnob(mixSlider,     "MIX",      mixAtt,     " %");
 
-    addAndMakeVisible(shapeBox);
-    shapeBox.addItemList( {"Sine", "Triangle", "Square"}, 1 );
-    shapeAtt.reset(new ComboBoxAttachment(*audioProcessor.apvts, "SHAPE", shapeBox));
+    // Custom components (Batch 06)
+    addAndMakeVisible(waveformSelector);
+    addAndMakeVisible(splitToggle);
 
     addAndMakeVisible(auditionButton);
     auditionButton.setClickingTogglesState(true);
@@ -64,14 +65,6 @@ NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor (NewProjectAudioP
     presetBox.addItem("Laser", 3);
     presetBox.addItem("Pulse", 4);
     presetBox.onChange = [this] { if(presetBox.getSelectedId()>0) audioProcessor.loadPreset(presetBox.getSelectedId()); };
-
-    addAndMakeVisible(agmButton);
-    agmButton.setClickingTogglesState(true);
-    agmAtt.reset(new ButtonAttachment(*audioProcessor.apvts, "AGM_MODE", agmButton));
-
-    addAndMakeVisible(clipButton);
-    clipButton.setClickingTogglesState(true);
-    clipAtt.reset(new ButtonAttachment(*audioProcessor.apvts, "SOFT_CLIP", clipButton));
 
     addAndMakeVisible(envelopeView);
     addAndMakeVisible(energyTopology);
@@ -127,6 +120,10 @@ void NewProjectAudioProcessorEditor::updateColors()
     // Update EnergyTopology colors
     energyTopology.setPalette(palette);
 
+    // Update custom components (Batch 06)
+    waveformSelector.setPalette(palette);
+    splitToggle.setPalette(palette);
+
     // Apply colors to sliders (use accent with alpha from map for text box color)
     auto apply = [&](juce::Slider& s) {
         s.setColour(juce::Slider::thumbColourId, palette.accent);
@@ -141,13 +138,6 @@ void NewProjectAudioProcessorEditor::updateColors()
     apply(startFreqSlider); apply(peakFreqSlider); apply(satSlider); apply(noiseSlider);
     apply(pAttSlider); apply(pDecSlider); apply(aAttSlider); apply(aDecSlider);
     apply(duckSlider); apply(duckAttSlider); apply(duckDecSlider); apply(wetSlider); apply(drySlider); apply(mixSlider);
-
-    // Apply colors to buttons
-    auto applyBtn = [&](juce::TextButton& b) {
-        b.setColour(juce::TextButton::buttonOnColourId, palette.accent);
-        b.setColour(juce::TextButton::textColourOnId, juce::Colours::black);
-    };
-    applyBtn(agmButton); applyBtn(clipButton);
 }
 
 void NewProjectAudioProcessorEditor::drawPixelArt(juce::Graphics& g, int startX, int startY, int scale, juce::Colour color, int type)
@@ -367,7 +357,10 @@ void NewProjectAudioProcessorEditor::resized()
     int startY = 290; int colW = 220; int knobSize = 60; int gap = 92;  // Reduced knob size, increased spacing
     themeSelector.setBounds(790, 5, 150, 24);
     presetBox.setBounds(130, 5, 150, 20);
-    agmButton.setBounds(860, 250, 80, 25); clipButton.setBounds(860, 290, 80, 25);
+
+    // Custom components (Batch 06)
+    waveformSelector.setBounds(20 + colW, startY + gap*2, 150, 28);  // Replace shapeBox
+    splitToggle.setBounds(20 + colW*3, startY + gap*3, 80, 80);      // In Output panel
 
     // Energy Topology bounds (matches paint() panel calculation)
     const int margin = 10;
@@ -379,7 +372,7 @@ void NewProjectAudioProcessorEditor::resized()
     energyTopology.setBounds(topologyPanelArea.withTrimmedTop(headerHeight).reduced(4));
 
     threshSlider.setBounds (20, startY, knobSize, knobSize); ceilingSlider.setBounds(100, startY, knobSize, knobSize); relSlider.setBounds(20, startY + gap, knobSize, knobSize); waitSlider.setBounds(100, startY + gap, knobSize, knobSize); freqSlider.setBounds(20, startY + gap*2, knobSize, knobSize); qSlider.setBounds(100, startY + gap*2, knobSize, knobSize); auditionButton.setBounds(20, startY + gap*3, 40, 25);
-    startFreqSlider.setBounds (20 + colW, startY, knobSize, knobSize); peakFreqSlider.setBounds(100 + colW, startY, knobSize, knobSize); satSlider.setBounds(20 + colW, startY + gap, knobSize, knobSize); noiseSlider.setBounds(100 + colW, startY + gap, knobSize, knobSize); shapeBox.setBounds(20 + colW, startY + gap*2, 150, 25);
+    startFreqSlider.setBounds (20 + colW, startY, knobSize, knobSize); peakFreqSlider.setBounds(100 + colW, startY, knobSize, knobSize); satSlider.setBounds(20 + colW, startY + gap, knobSize, knobSize); noiseSlider.setBounds(100 + colW, startY + gap, knobSize, knobSize);
     pAttSlider.setBounds (20 + colW*2, startY, knobSize, knobSize); pDecSlider.setBounds(100 + colW*2, startY, knobSize, knobSize); aAttSlider.setBounds(20 + colW*2, startY + gap, knobSize, knobSize); aDecSlider.setBounds(100 + colW*2, startY + gap, knobSize, knobSize);
     duckSlider.setBounds (20 + colW*3, startY, knobSize, knobSize); mixSlider.setBounds(100 + colW*3, startY, knobSize, knobSize); duckAttSlider.setBounds(20 + colW*3, startY + gap, knobSize, knobSize); duckDecSlider.setBounds(100 + colW*3, startY + gap, knobSize, knobSize); wetSlider.setBounds(20 + colW*3, startY + gap*2, knobSize, knobSize); drySlider.setBounds(100 + colW*3, startY + gap*2, knobSize, knobSize);
 }
