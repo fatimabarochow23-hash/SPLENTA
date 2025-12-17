@@ -390,10 +390,10 @@ void NewProjectAudioProcessorEditor::resized()
     int startY = 290; int colW = 220; int knobSize = 60; int gap = 92;  // Reduced knob size, increased spacing
 
     // Web-Style Header (top bar) - SAVE/LOAD right of TOPOLOGY
-    saveButton.setBounds(700, 5, 60, 24);
-    loadButton.setBounds(770, 5, 60, 24);
+    saveButton.setBounds(650, 5, 60, 24);
+    loadButton.setBounds(720, 5, 60, 24);
     presetNameLabel.setBounds(350, 5, 200, 24);
-    themeSelector.setBounds(840, 5, 110, 24);
+    themeSelector.setBounds(790, 5, 110, 24);
 
     // Custom components (Batch 06)
     waveformSelector.setBounds(20 + colW, startY + gap*2, 150, 28);  // Replace shapeBox
