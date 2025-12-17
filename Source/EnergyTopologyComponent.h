@@ -55,6 +55,11 @@ private:
     float scatterAmount = 0.0f;      // 0.0 = stable, 1.0 = fully scattered
     std::vector<juce::Point<float>> particleOffsets; // Scatter offsets for each particle
 
+    // Sakura trail for Pink theme (Cartesian)
+    static constexpr int trailLength = 12;
+    std::vector<juce::Point<float>> sakuraTrail; // Historical positions for petal trail
+    int trailWriteIndex = 0;
+
     // Theme renderers
     void drawMobius(juce::Graphics& g, float width, float height, float cx, float cy);
     void drawWaves(juce::Graphics& g, float width, float height, float cx, float cy);
@@ -67,6 +72,9 @@ private:
         float x, y, scale, z;
     };
     Projection3D project3D(float x, float y, float z, float cx, float cy);
+
+    // Helper: Draw sakura blossom (for Pink theme)
+    void drawSakura(juce::Graphics& g, float x, float y, float size, float rotation, float scatterAmt);
 
     // Helper: Convert accent color to RGBA string equivalent
     juce::Colour getColorWithAlpha(float alpha);
