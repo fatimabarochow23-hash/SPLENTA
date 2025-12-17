@@ -35,6 +35,7 @@ EnergyTopologyComponent::EnergyTopologyComponent()
 
     // Initialize sakura trail
     sakuraTrail.resize(trailLength, juce::Point<float>(0.0f, 0.0f));
+    sakuraTrailRotations.resize(trailLength, 0.0f);
 
     // Initialize with default Bronze palette
     palette = ThemePalette::getPaletteByIndex(0);
@@ -464,10 +465,10 @@ EnergyTopologyComponent::Projection3D EnergyTopologyComponent::project3D(float x
 // 5. PINK: SAKURA BLOSSOM FLIGHT (Redesigned)
 void EnergyTopologyComponent::drawCartesian(juce::Graphics& g, float width, float height, float cx, float cy)
 {
-    float scale = juce::jmin(width, height) * 0.35f;
+    float scale = juce::jmin(width, height) * 0.45f; // Increased from 0.35f for larger stage
     float normalizedIntensity = intensity / 100.0f;
 
-    // 1. Draw Lissajous Curve with distortion on trigger
+    // 1. Draw Lissajous Curve with horizontal stretch and distortion on trigger
     juce::Path curvePath;
     bool firstPoint = true;
     const int samples = 150;
@@ -476,15 +477,15 @@ void EnergyTopologyComponent::drawCartesian(juce::Graphics& g, float width, floa
     {
         float t = (i / (float)samples) * juce::MathConstants<float>::twoPi;
 
-        // Lissajous Knot equations
-        float x3d = scale * (std::sin(t) + 2.0f * std::sin(2.0f * t)) / 2.5f;
+        // Lissajous Knot equations with horizontal stretch
+        float x3d = scale * (std::sin(t) + 2.0f * std::sin(2.0f * t)) / 2.5f * 1.4f; // 1.4x horizontal stretch
         float y3d = scale * (std::cos(t) - 2.0f * std::cos(2.0f * t)) / 2.5f;
         float z3d = scale * (-std::sin(3.0f * t)) / 2.0f;
 
         // Apply distortion when scatterAmount > 0 (curve inflation/twist)
         if (scatterAmount > 0.0f)
         {
-            float distortion = scatterAmount * 30.0f; // Distortion magnitude
+            float distortion = scatterAmount * 40.0f; // Increased from 30.0f
             float noiseX = std::sin(t * 5.0f + time) * distortion;
             float noiseY = std::cos(t * 7.0f + time * 1.2f) * distortion;
             float noiseZ = std::sin(t * 3.0f + time * 0.8f) * distortion;
@@ -510,49 +511,87 @@ void EnergyTopologyComponent::drawCartesian(juce::Graphics& g, float width, floa
 
     // 2. Calculate sakura position on curve
     float travelerT = std::fmod(time * 0.5f, juce::MathConstants<float>::twoPi);
-    float tx3d = scale * (std::sin(travelerT) + 2.0f * std::sin(2.0f * travelerT)) / 2.5f;
+    float tx3d = scale * (std::sin(travelerT) + 2.0f * std::sin(2.0f * travelerT)) / 2.5f * 1.4f; // Horizontal stretch
     float ty3d = scale * (std::cos(travelerT) - 2.0f * std::cos(2.0f * travelerT)) / 2.5f;
     float tz3d = scale * (-std::sin(3.0f * travelerT)) / 2.0f;
 
     auto travelerProj = project3D(tx3d, ty3d, tz3d, cx, cy);
 
+    // Current rotation angle
+    float currentRotation = time * 2.0f;
+
     // Update trail buffer (circular buffer)
     sakuraTrail[trailWriteIndex] = juce::Point<float>(travelerProj.x, travelerProj.y);
+    sakuraTrailRotations[trailWriteIndex] = currentRotation;
     trailWriteIndex = (trailWriteIndex + 1) % trailLength;
 
-    // 3. Draw petal trail (from oldest to newest)
+    // 3. Draw petal trail with Brownian motion and spiral effect
+    juce::Random random;
+    random.setSeedRandomly();
+
     for (int i = 0; i < trailLength; ++i)
     {
         int readIndex = (trailWriteIndex + i) % trailLength; // Oldest first
         auto& trailPos = sakuraTrail[readIndex];
+        float trailRotation = sakuraTrailRotations[readIndex];
 
         if (trailPos.x == 0.0f && trailPos.y == 0.0f) continue; // Skip uninitialized
 
         float trailAge = (float)i / (float)trailLength; // 0.0 = oldest, 1.0 = newest
-        float petalAlpha = (1.0f - trailAge) * 0.4f; // Fade out older petals
-        float petalSize = 3.0f * (1.0f - trailAge * 0.5f); // Shrink older petals
 
-        // Draw single petal (simplified sakura petal)
-        g.setColour(getColorWithAlpha(petalAlpha));
-        g.fillEllipse(trailPos.x - petalSize, trailPos.y - petalSize,
-                      petalSize * 2.0f, petalSize * 2.0f);
+        // Multiple petals per trail position (3-5 petals for dramatic effect)
+        int petalCount = 3 + (int)(trailAge * 2); // More petals for newer positions
+
+        for (int p = 0; p < petalCount; ++p)
+        {
+            // Brownian motion offset (larger for older petals)
+            float brownianScale = (1.0f - trailAge) * 15.0f; // Older petals drift more
+            float brownianX = (random.nextFloat() - 0.5f) * brownianScale;
+            float brownianY = (random.nextFloat() - 0.5f) * brownianScale;
+
+            // Spiral offset (petals spiral outward as they age)
+            float spiralAngle = trailRotation + (p / (float)petalCount) * juce::MathConstants<float>::twoPi;
+            float spiralRadius = (1.0f - trailAge) * 8.0f; // Spiral outward
+            float spiralX = std::cos(spiralAngle) * spiralRadius;
+            float spiralY = std::sin(spiralAngle) * spiralRadius;
+
+            float petalX = trailPos.x + brownianX + spiralX;
+            float petalY = trailPos.y + brownianY + spiralY;
+
+            // Fade and size based on age
+            float petalAlpha = (1.0f - trailAge) * 0.5f; // Fade more aggressively
+            float petalSize = (4.0f + random.nextFloat() * 2.0f) * (1.0f - trailAge * 0.6f);
+
+            // Individual petal rotation
+            float petalRotation = spiralAngle + time * 0.5f;
+
+            // Draw petal as ellipse with rotation
+            g.setColour(getColorWithAlpha(petalAlpha));
+            juce::Path petalPath;
+            petalPath.addEllipse(petalX - petalSize * 0.7f, petalY - petalSize,
+                                 petalSize * 1.4f, petalSize * 2.0f);
+
+            juce::AffineTransform transform = juce::AffineTransform::rotation(petalRotation, petalX, petalY);
+            petalPath.applyTransform(transform);
+            g.fillPath(petalPath);
+        }
     }
 
-    // 4. Draw main sakura blossom with flash effect
+    // 4. Draw main sakura blossom with flash effect (LARGER)
     float beatCycle = std::fmod(time * 1.5f, 2.0f);
     bool isFlash = beatCycle < 0.2f;
     float flashAlpha = isFlash ? 1.0f : 0.7f;
 
-    float sakuraSize = 8.0f + normalizedIntensity * 4.0f;
+    float sakuraSize = 18.0f + normalizedIntensity * 8.0f; // Increased from 8+4 to 18+8
     float rotation = time * 2.0f; // Gentle rotation
 
     drawSakura(g, travelerProj.x, travelerProj.y, sakuraSize, rotation, scatterAmount);
 }
 
-// Helper: Draw sakura blossom (5 petals)
+// Helper: Draw sakura blossom (8 petals for fuller look)
 void EnergyTopologyComponent::drawSakura(juce::Graphics& g, float x, float y, float size, float rotation, float scatterAmt)
 {
-    const int petalCount = 5;
+    const int petalCount = 8; // Increased from 5 to 8 for fuller blossom
     const float angleStep = juce::MathConstants<float>::twoPi / petalCount;
 
     // Petal scatter offsets (when scatterAmt > 0, petals fly apart)
@@ -563,8 +602,8 @@ void EnergyTopologyComponent::drawSakura(juce::Graphics& g, float x, float y, fl
         float angle = rotation + i * angleStep;
 
         // Petal position offset from center
-        float baseOffsetDist = size * 0.4f; // Distance of petal center from blossom center
-        float scatterDist = scatterAmt * (20.0f + random.nextFloat() * 15.0f); // Scatter distance
+        float baseOffsetDist = size * 0.5f; // Increased from 0.4f
+        float scatterDist = scatterAmt * (30.0f + random.nextFloat() * 25.0f); // Increased scatter range
 
         float offsetX = std::cos(angle) * (baseOffsetDist + scatterDist);
         float offsetY = std::sin(angle) * (baseOffsetDist + scatterDist);
@@ -572,12 +611,12 @@ void EnergyTopologyComponent::drawSakura(juce::Graphics& g, float x, float y, fl
         float petalX = x + offsetX;
         float petalY = y + offsetY;
 
-        // Draw heart-shaped petal
+        // Draw heart-shaped petal (larger)
         juce::Path petalPath;
 
         // Heart petal using ellipse approximation
-        float petalW = size * 0.5f;
-        float petalH = size * 0.6f;
+        float petalW = size * 0.6f; // Increased from 0.5f
+        float petalH = size * 0.75f; // Increased from 0.6f
 
         // Create petal as rounded shape pointing outward
         petalPath.addEllipse(petalX - petalW/2, petalY - petalH/2, petalW, petalH);
@@ -587,12 +626,13 @@ void EnergyTopologyComponent::drawSakura(juce::Graphics& g, float x, float y, fl
         petalPath.applyTransform(rotation);
 
         // Draw petal with gradient (lighter at tip, darker at base)
-        g.setColour(getColorWithAlpha(0.8f));
+        float petalAlpha = 0.85f * (1.0f - scatterAmt * 0.3f); // Slight fade when scattered
+        g.setColour(getColorWithAlpha(petalAlpha));
         g.fillPath(petalPath);
     }
 
-    // Draw center of sakura
-    float centerSize = size * 0.25f * (1.0f - scatterAmt * 0.5f); // Center shrinks when scattered
-    g.setColour(getColorWithAlpha(0.9f));
+    // Draw center of sakura (larger)
+    float centerSize = size * 0.35f * (1.0f - scatterAmt * 0.5f); // Increased from 0.25f
+    g.setColour(getColorWithAlpha(0.95f));
     g.fillEllipse(x - centerSize, y - centerSize, centerSize * 2.0f, centerSize * 2.0f);
 }

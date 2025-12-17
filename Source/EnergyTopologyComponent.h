@@ -56,8 +56,9 @@ private:
     std::vector<juce::Point<float>> particleOffsets; // Scatter offsets for each particle
 
     // Sakura trail for Pink theme (Cartesian)
-    static constexpr int trailLength = 12;
+    static constexpr int trailLength = 30; // Increased for more dramatic trail
     std::vector<juce::Point<float>> sakuraTrail; // Historical positions for petal trail
+    std::vector<float> sakuraTrailRotations; // Rotation angles for each trail position
     int trailWriteIndex = 0;
 
     // Theme renderers
