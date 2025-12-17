@@ -305,6 +305,9 @@ void NewProjectAudioProcessorEditor::timerCallback()
     updateKnobAlpha(duckSlider); updateKnobAlpha(duckAttSlider); updateKnobAlpha(duckDecSlider);
     updateKnobAlpha(wetSlider); updateKnobAlpha(drySlider); updateKnobAlpha(mixSlider);
 
+    // Update trigger particle scatter effect in Energy Topology
+    energyTopology.setTriggerState(audioProcessor.isTriggeredUI);
+
     repaint();
 }
 

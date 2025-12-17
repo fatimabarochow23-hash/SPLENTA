@@ -24,6 +24,9 @@ public:
     void setPalette(const ThemePalette& newPalette);
     void setIntensity(float intensityValue); // 0.0f to 100.0f
 
+    // Trigger effect for particle scatter/gather
+    void setTriggerState(bool isTriggered);
+
 private:
     void timerCallback() override;
 
@@ -46,6 +49,11 @@ private:
     float time = 0.0f;
     float intensity = 50.0f;     // 0-100
     ThemePalette palette;
+
+    // Trigger scatter effect
+    bool lastTriggerState = false;
+    float scatterAmount = 0.0f;      // 0.0 = stable, 1.0 = fully scattered
+    std::vector<juce::Point<float>> particleOffsets; // Scatter offsets for each particle
 
     // Theme renderers
     void drawMobius(juce::Graphics& g, float width, float height, float cx, float cy);

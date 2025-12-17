@@ -12,6 +12,7 @@ EnergyTopologyComponent::EnergyTopologyComponent()
     // Initialize particles
     juce::Random random;
     particles.reserve(numParticles);
+    particleOffsets.reserve(numParticles);
 
     for (int i = 0; i < numParticles; ++i)
     {
@@ -27,6 +28,9 @@ EnergyTopologyComponent::EnergyTopologyComponent()
         p.speed = 0.005f + random.nextFloat() * 0.01f;
         p.life = random.nextFloat();
         particles.push_back(p);
+
+        // Initialize scatter offsets
+        particleOffsets.push_back(juce::Point<float>(0.0f, 0.0f));
     }
 
     // Initialize with default Bronze palette
@@ -52,6 +56,28 @@ void EnergyTopologyComponent::setIntensity(float intensityValue)
     intensity = juce::jlimit(0.0f, 100.0f, intensityValue);
 }
 
+void EnergyTopologyComponent::setTriggerState(bool isTriggered)
+{
+    // Detect rising edge (false -> true)
+    if (isTriggered && !lastTriggerState)
+    {
+        // Trigger scatter effect
+        scatterAmount = 1.0f;
+
+        // Generate random scatter offsets for each particle
+        juce::Random random;
+        for (int i = 0; i < numParticles; ++i)
+        {
+            // Random direction and distance (burst outward)
+            float angle = random.nextFloat() * juce::MathConstants<float>::twoPi;
+            float distance = 30.0f + random.nextFloat() * 50.0f; // 30-80 pixels
+            particleOffsets[i].x = std::cos(angle) * distance;
+            particleOffsets[i].y = std::sin(angle) * distance;
+        }
+    }
+    lastTriggerState = isTriggered;
+}
+
 juce::Colour EnergyTopologyComponent::getColorWithAlpha(float alpha)
 {
     return palette.accent.withAlpha(alpha);
@@ -62,6 +88,15 @@ void EnergyTopologyComponent::timerCallback()
     float normalizedIntensity = intensity / 100.0f;
     float speedMultiplier = 1.0f + (normalizedIntensity * 3.0f);
     time += 0.01f * speedMultiplier;
+
+    // Decay scatter effect (fast recovery - exponential decay)
+    if (scatterAmount > 0.0f)
+    {
+        scatterAmount *= 0.90f; // Decay by 10% per frame (very fast at 60fps)
+        if (scatterAmount < 0.01f)
+            scatterAmount = 0.0f;
+    }
+
     repaint();
 }
 
@@ -213,6 +248,17 @@ void EnergyTopologyComponent::drawWaves(juce::Graphics& g, float width, float he
             float persp = 1000.0f / (1000.0f - zFinal);
             float x2d = cx + xRot * persp;
             float y2d = cy + yFinal * persp;
+
+            // Apply scatter effect (if active)
+            if (scatterAmount > 0.0f)
+            {
+                int particleIndex = r * cols + c;
+                if (particleIndex < numParticles)
+                {
+                    x2d += particleOffsets[particleIndex].x * scatterAmount;
+                    y2d += particleOffsets[particleIndex].y * scatterAmount;
+                }
+            }
 
             float alpha = ((zFinal + scale) / (scale * 2.0f)) * 0.8f + 0.2f;
             float size = 2.0f * persp + (heightVal * 10.0f * normalizedIntensity);

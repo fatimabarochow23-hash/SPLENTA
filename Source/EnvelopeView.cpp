@@ -114,33 +114,7 @@ void EnvelopeView::paint(juce::Graphics& g)
     g.setColour(juce::Colour(0xFFFFFFFF).withAlpha(0.8f));
     g.drawText("THR", 5, (int)thresholdY + 2, 30, 10, juce::Justification::left, false);
 
-    // === Draw Detector Envelope (bottom layer, thicker) ===
-    {
-        juce::Path detectorPath;
-        bool started = false;
-
-        for (int i = displayStartIndex; i < displayEndIndex; ++i)
-        {
-            float x = (i - displayStartIndex) * xStep;
-            float logValue = mapToLogScale(historyBuffer[i].detector);
-            float y = height * (1.0f - logValue);
-
-            if (!started)
-            {
-                detectorPath.startNewSubPath(x, y);
-                started = true;
-            }
-            else
-            {
-                detectorPath.lineTo(x, y);
-            }
-        }
-
-        g.setColour(detectorColour);
-        g.strokePath(detectorPath, juce::PathStrokeType(2.5f, juce::PathStrokeType::curved));
-    }
-
-    // === Draw Synthesizer Envelope (middle layer, filled + stroked) ===
+    // === Draw Synthesizer Envelope (main waveform with gradient fill) ===
     {
         juce::Path synthPath;
         synthPath.startNewSubPath(0.0f, height);
@@ -167,7 +141,7 @@ void EnvelopeView::paint(juce::Graphics& g)
         g.setGradientFill(gradient);
         g.fillPath(synthPath);
 
-        // Stroke the top edge
+        // Stroke the top edge (clean single line)
         juce::Path synthStrokePath;
         bool started = false;
         for (int i = displayStartIndex; i < displayEndIndex; ++i)
@@ -189,32 +163,6 @@ void EnvelopeView::paint(juce::Graphics& g)
 
         g.setColour(synthColour);
         g.strokePath(synthStrokePath, juce::PathStrokeType(2.0f, juce::PathStrokeType::curved));
-    }
-
-    // === Draw Output Envelope (top layer, thinner, bright) ===
-    {
-        juce::Path outputPath;
-        bool started = false;
-
-        for (int i = displayStartIndex; i < displayEndIndex; ++i)
-        {
-            float x = (i - displayStartIndex) * xStep;
-            float logValue = mapToLogScale(historyBuffer[i].output);
-            float y = height * (1.0f - logValue);
-
-            if (!started)
-            {
-                outputPath.startNewSubPath(x, y);
-                started = true;
-            }
-            else
-            {
-                outputPath.lineTo(x, y);
-            }
-        }
-
-        g.setColour(outputColour);
-        g.strokePath(outputPath, juce::PathStrokeType(1.5f, juce::PathStrokeType::curved));
     }
 }
 
