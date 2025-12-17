@@ -382,7 +382,49 @@ void NewProjectAudioProcessorEditor::paint (juce::Graphics& g)
     drawLabel(duckSlider, "Duck"); drawLabel(duckAttSlider, "D.Att"); drawLabel(duckDecSlider, "D.Dec");
     drawLabel(wetSlider, "Wet"); drawLabel(drySlider, "Dry"); drawLabel(mixSlider, "Mix");
 
-    // Branding footer removed (per user request)
+    // SubForge branding footer (Batch 09 - static paint, zero performance impact)
+    {
+        // Define footer area (bottom right corner)
+        auto footerBounds = juce::Rectangle<int>(770, 590, 180, 30);
+
+        // Draw hexagon icon (left side of footer)
+        juce::Path hexagon;
+        float hexCenterX = footerBounds.getX() + 12.0f;
+        float hexCenterY = footerBounds.getCentreY();
+        float hexRadius = 8.0f;
+
+        for (int i = 0; i < 6; ++i) {
+            float angle = (i / 6.0f) * juce::MathConstants<float>::twoPi;
+            float x = hexCenterX + hexRadius * std::cos(angle);
+            float y = hexCenterY + hexRadius * std::sin(angle);
+
+            if (i == 0)
+                hexagon.startNewSubPath(x, y);
+            else
+                hexagon.lineTo(x, y);
+        }
+        hexagon.closeSubPath();
+
+        g.setColour(c_accent);
+        g.strokePath(hexagon, juce::PathStrokeType(1.5f));
+
+        // Draw "SUBFORGE" text (split color)
+        auto textBounds = footerBounds.withTrimmedLeft(28);
+        g.setFont(stealthLnF.getMonospaceFont(16.0f).withStyle(juce::Font::bold));
+
+        // Draw "SUB" in white
+        g.setColour(juce::Colours::white);
+        g.drawText("SUB", textBounds.getX(), textBounds.getY(), 35, textBounds.getHeight(), juce::Justification::centredLeft);
+
+        // Draw "FORGE" in accent color
+        g.setColour(c_accent);
+        g.drawText("FORGE", textBounds.getX() + 35, textBounds.getY(), 60, textBounds.getHeight(), juce::Justification::centredLeft);
+
+        // Draw subtitle below
+        g.setFont(stealthLnF.getMonospaceFont(8.0f));
+        g.setColour(juce::Colours::white.withAlpha(0.3f));
+        g.drawText("GENERATIVE LF ENHANCER", textBounds.getX(), textBounds.getY() + 15, 150, 10, juce::Justification::centredLeft);
+    }
 }
 
 void NewProjectAudioProcessorEditor::resized()
