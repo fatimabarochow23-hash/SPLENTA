@@ -393,12 +393,12 @@ void NewProjectAudioProcessorEditor::resized()
 {
     int startY = 290; int colW = 220; int knobSize = 60; int gap = 92;  // Reduced knob size, increased spacing
 
-    // Web-Style Header (top bar) - shifted right, compact layout
-    logoLabel.setBounds(80, 5, 100, 24);
-    saveButton.setBounds(190, 5, 60, 24);
-    loadButton.setBounds(260, 5, 60, 24);
+    // Web-Style Header (top bar) - SPLENTA right of DETECTOR, SAVE/LOAD right of TOPOLOGY
+    logoLabel.setBounds(500, 5, 100, 24);
+    saveButton.setBounds(700, 5, 60, 24);
+    loadButton.setBounds(770, 5, 60, 24);
     presetNameLabel.setBounds(350, 5, 200, 24);
-    themeSelector.setBounds(790, 5, 150, 24);
+    themeSelector.setBounds(840, 5, 110, 24);
 
     // Custom components (Batch 06)
     waveformSelector.setBounds(20 + colW, startY + gap*2, 150, 28);  // Replace shapeBox
