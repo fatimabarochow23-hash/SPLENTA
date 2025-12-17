@@ -386,23 +386,18 @@ void NewProjectAudioProcessorEditor::paint (juce::Graphics& g)
     drawLabel(duckSlider, "Duck"); drawLabel(duckAttSlider, "D.Att"); drawLabel(duckDecSlider, "D.Dec");
     drawLabel(wetSlider, "Wet"); drawLabel(drySlider, "Dry"); drawLabel(mixSlider, "Mix");
 
-    // Branding (removed, now in logoLabel)
-    g.setFont(juce::FontOptions(10.0f));
-    g.setColour(c_text.withAlpha(0.8f));
-    g.drawText("AUDIO TOOLS", 800, 575, 100, 10, juce::Justification::right);
-    g.setColour(c_accent);
-    g.fillRect(835, 572, 65, 2);
+    // Branding footer removed (per user request)
 }
 
 void NewProjectAudioProcessorEditor::resized()
 {
     int startY = 290; int colW = 220; int knobSize = 60; int gap = 92;  // Reduced knob size, increased spacing
 
-    // Web-Style Header (top bar)
-    logoLabel.setBounds(10, 5, 120, 24);
-    presetNameLabel.setBounds(300, 5, 200, 24);
-    saveButton.setBounds(520, 5, 60, 24);
-    loadButton.setBounds(590, 5, 60, 24);
+    // Web-Style Header (top bar) - shifted right, compact layout
+    logoLabel.setBounds(80, 5, 100, 24);
+    saveButton.setBounds(190, 5, 60, 24);
+    loadButton.setBounds(260, 5, 60, 24);
+    presetNameLabel.setBounds(350, 5, 200, 24);
     themeSelector.setBounds(790, 5, 150, 24);
 
     // Custom components (Batch 06)
