@@ -509,7 +509,7 @@ void EnergyTopologyComponent::drawCartesian(juce::Graphics& g, float width, floa
     g.setColour(getColorWithAlpha(0.3f + normalizedIntensity * 0.3f));
     g.strokePath(curvePath, juce::PathStrokeType(2.0f));
 
-    // 2. Calculate sakura position on curve
+    // 2. Calculate UFO position on curve
     float travelerT = std::fmod(time * 0.5f, juce::MathConstants<float>::twoPi);
     float tx3d = scale * (std::sin(travelerT) + 2.0f * std::sin(2.0f * travelerT)) / 2.5f * 1.4f; // Horizontal stretch
     float ty3d = scale * (std::cos(travelerT) - 2.0f * std::cos(2.0f * travelerT)) / 2.5f;
@@ -520,12 +520,12 @@ void EnergyTopologyComponent::drawCartesian(juce::Graphics& g, float width, floa
     // Current rotation angle
     float currentRotation = time * 2.0f;
 
-    // Update trail buffer (circular buffer)
+    // Update trail buffer (circular buffer) for exhaust trail
     sakuraTrail[trailWriteIndex] = juce::Point<float>(travelerProj.x, travelerProj.y);
     sakuraTrailRotations[trailWriteIndex] = currentRotation;
     trailWriteIndex = (trailWriteIndex + 1) % trailLength;
 
-    // 3. Draw petal trail with Brownian motion and spiral effect
+    // 3. Draw exhaust trail (UFO exhaust particles)
     juce::Random random;
     random.setSeedRandomly();
 
@@ -539,100 +539,144 @@ void EnergyTopologyComponent::drawCartesian(juce::Graphics& g, float width, floa
 
         float trailAge = (float)i / (float)trailLength; // 0.0 = oldest, 1.0 = newest
 
-        // Multiple petals per trail position (3-5 petals for dramatic effect)
-        int petalCount = 3 + (int)(trailAge * 2); // More petals for newer positions
+        // Multiple exhaust particles per trail position
+        int particleCount = 3 + (int)(trailAge * 2);
 
-        for (int p = 0; p < petalCount; ++p)
+        for (int p = 0; p < particleCount; ++p)
         {
-            // Brownian motion offset (larger for older petals)
-            float brownianScale = (1.0f - trailAge) * 15.0f; // Older petals drift more
+            // Brownian motion offset (exhaust turbulence)
+            float brownianScale = (1.0f - trailAge) * 15.0f;
             float brownianX = (random.nextFloat() - 0.5f) * brownianScale;
             float brownianY = (random.nextFloat() - 0.5f) * brownianScale;
 
-            // Spiral offset (petals spiral outward as they age)
-            float spiralAngle = trailRotation + (p / (float)petalCount) * juce::MathConstants<float>::twoPi;
-            float spiralRadius = (1.0f - trailAge) * 8.0f; // Spiral outward
+            // Spiral offset (exhaust swirl)
+            float spiralAngle = trailRotation + (p / (float)particleCount) * juce::MathConstants<float>::twoPi;
+            float spiralRadius = (1.0f - trailAge) * 8.0f;
             float spiralX = std::cos(spiralAngle) * spiralRadius;
             float spiralY = std::sin(spiralAngle) * spiralRadius;
 
-            float petalX = trailPos.x + brownianX + spiralX;
-            float petalY = trailPos.y + brownianY + spiralY;
+            float particleX = trailPos.x + brownianX + spiralX;
+            float particleY = trailPos.y + brownianY + spiralY;
 
-            // Fade and size based on age
-            float petalAlpha = (1.0f - trailAge) * 0.5f; // Fade more aggressively
-            float petalSize = (4.0f + random.nextFloat() * 2.0f) * (1.0f - trailAge * 0.6f);
+            // Exhaust particle appearance (glowing dots)
+            float particleAlpha = (1.0f - trailAge) * 0.6f;
+            float particleSize = (3.0f + random.nextFloat() * 2.0f) * (1.0f - trailAge * 0.7f);
 
-            // Individual petal rotation
-            float petalRotation = spiralAngle + time * 0.5f;
-
-            // Draw petal as ellipse with rotation
-            g.setColour(getColorWithAlpha(petalAlpha));
-            juce::Path petalPath;
-            petalPath.addEllipse(petalX - petalSize * 0.7f, petalY - petalSize,
-                                 petalSize * 1.4f, petalSize * 2.0f);
-
-            juce::AffineTransform transform = juce::AffineTransform::rotation(petalRotation, petalX, petalY);
-            petalPath.applyTransform(transform);
-            g.fillPath(petalPath);
+            // Draw circular exhaust particle
+            g.setColour(getColorWithAlpha(particleAlpha));
+            g.fillEllipse(particleX - particleSize, particleY - particleSize,
+                          particleSize * 2.0f, particleSize * 2.0f);
         }
     }
 
-    // 4. Draw main sakura blossom with flash effect (LARGER)
+    // 4. Draw UFO with flash effect
     float beatCycle = std::fmod(time * 1.5f, 2.0f);
     bool isFlash = beatCycle < 0.2f;
-    float flashAlpha = isFlash ? 1.0f : 0.7f;
 
-    float sakuraSize = 18.0f + normalizedIntensity * 8.0f; // Increased from 8+4 to 18+8
-    float rotation = time * 2.0f; // Gentle rotation
+    float ufoSize = 20.0f + normalizedIntensity * 10.0f;
+    float rotation = time * 2.0f;
 
-    drawSakura(g, travelerProj.x, travelerProj.y, sakuraSize, rotation, scatterAmount);
+    drawUFO(g, travelerProj.x, travelerProj.y, ufoSize, rotation, isFlash);
 }
 
-// Helper: Draw sakura blossom (8 petals for fuller look)
-void EnergyTopologyComponent::drawSakura(juce::Graphics& g, float x, float y, float size, float rotation, float scatterAmt)
+// Helper: Draw UFO (particle-based construction)
+void EnergyTopologyComponent::drawUFO(juce::Graphics& g, float x, float y, float size, float rotation, bool isFlash)
 {
-    const int petalCount = 8; // Increased from 5 to 8 for fuller blossom
-    const float angleStep = juce::MathConstants<float>::twoPi / petalCount;
+    // Flash alpha modifier
+    float flashMod = isFlash ? 1.2f : 1.0f;
 
-    // Petal scatter offsets (when scatterAmt > 0, petals fly apart)
-    juce::Random random;
+    // 1. Bottom disc (outer ring) - 20 particles in ellipse
+    const int bottomRingCount = 20;
+    float bottomRadiusX = size * 0.9f;
+    float bottomRadiusY = size * 0.3f; // Flattened ellipse
 
-    for (int i = 0; i < petalCount; ++i)
+    for (int i = 0; i < bottomRingCount; ++i)
     {
-        float angle = rotation + i * angleStep;
+        float angle = rotation + (i / (float)bottomRingCount) * juce::MathConstants<float>::twoPi;
+        float px = x + std::cos(angle) * bottomRadiusX;
+        float py = y + std::sin(angle) * bottomRadiusY;
 
-        // Petal position offset from center
-        float baseOffsetDist = size * 0.5f; // Increased from 0.4f
-        float scatterDist = scatterAmt * (30.0f + random.nextFloat() * 25.0f); // Increased scatter range
-
-        float offsetX = std::cos(angle) * (baseOffsetDist + scatterDist);
-        float offsetY = std::sin(angle) * (baseOffsetDist + scatterDist);
-
-        float petalX = x + offsetX;
-        float petalY = y + offsetY;
-
-        // Draw heart-shaped petal (larger)
-        juce::Path petalPath;
-
-        // Heart petal using ellipse approximation
-        float petalW = size * 0.6f; // Increased from 0.5f
-        float petalH = size * 0.75f; // Increased from 0.6f
-
-        // Create petal as rounded shape pointing outward
-        petalPath.addEllipse(petalX - petalW/2, petalY - petalH/2, petalW, petalH);
-
-        // Rotate petal to point outward from center
-        juce::AffineTransform rotation = juce::AffineTransform::rotation(angle, petalX, petalY);
-        petalPath.applyTransform(rotation);
-
-        // Draw petal with gradient (lighter at tip, darker at base)
-        float petalAlpha = 0.85f * (1.0f - scatterAmt * 0.3f); // Slight fade when scattered
-        g.setColour(getColorWithAlpha(petalAlpha));
-        g.fillPath(petalPath);
+        float particleSize = 1.5f;
+        g.setColour(getColorWithAlpha(0.7f * flashMod));
+        g.fillEllipse(px - particleSize, py - particleSize, particleSize * 2.0f, particleSize * 2.0f);
     }
 
-    // Draw center of sakura (larger)
-    float centerSize = size * 0.35f * (1.0f - scatterAmt * 0.5f); // Increased from 0.25f
-    g.setColour(getColorWithAlpha(0.95f));
-    g.fillEllipse(x - centerSize, y - centerSize, centerSize * 2.0f, centerSize * 2.0f);
+    // 2. Middle disc (main body) - 16 particles in smaller ellipse
+    const int middleRingCount = 16;
+    float middleRadiusX = size * 0.7f;
+    float middleRadiusY = size * 0.25f;
+
+    for (int i = 0; i < middleRingCount; ++i)
+    {
+        float angle = rotation * 0.8f + (i / (float)middleRingCount) * juce::MathConstants<float>::twoPi;
+        float px = x + std::cos(angle) * middleRadiusX;
+        float py = y + std::sin(angle) * middleRadiusY + size * 0.1f; // Slightly above center
+
+        float particleSize = 1.8f;
+        g.setColour(getColorWithAlpha(0.85f * flashMod));
+        g.fillEllipse(px - particleSize, py - particleSize, particleSize * 2.0f, particleSize * 2.0f);
+    }
+
+    // 3. Top dome (cockpit) - 12 particles in arc
+    const int domeCount = 12;
+    float domeRadius = size * 0.5f;
+
+    for (int i = 0; i < domeCount; ++i)
+    {
+        // Arc from left to right (180 degrees)
+        float arcT = i / (float)(domeCount - 1); // 0 to 1
+        float angle = juce::MathConstants<float>::pi * (arcT - 0.5f); // -90° to +90°
+
+        float px = x + std::cos(angle) * domeRadius;
+        float py = y - size * 0.35f + std::sin(angle) * domeRadius * 0.5f; // Above center, flattened arc
+
+        float particleSize = 1.3f;
+        float domeAlpha = 0.6f + (1.0f - std::abs(arcT - 0.5f) * 2.0f) * 0.3f; // Brighter at center
+        g.setColour(getColorWithAlpha(domeAlpha * flashMod));
+        g.fillEllipse(px - particleSize, py - particleSize, particleSize * 2.0f, particleSize * 2.0f);
+    }
+
+    // 4. Center core (glowing center) - larger particle
+    float coreSize = isFlash ? 3.5f : 2.5f;
+    g.setColour(getColorWithAlpha(isFlash ? 1.0f : 0.9f));
+    g.fillEllipse(x - coreSize, y - coreSize, coreSize * 2.0f, coreSize * 2.0f);
+
+    // 5. Bottom lights (4 blinking lights under the disc)
+    const int lightCount = 4;
+    float lightRadius = size * 0.5f;
+
+    for (int i = 0; i < lightCount; ++i)
+    {
+        float angle = rotation * 1.5f + (i / (float)lightCount) * juce::MathConstants<float>::twoPi;
+        float px = x + std::cos(angle) * lightRadius;
+        float py = y + size * 0.4f; // Below center
+
+        // Blinking effect (each light blinks at different phase)
+        float blinkPhase = std::fmod(time * 3.0f + i * 0.5f, 1.0f);
+        float blinkAlpha = (blinkPhase < 0.5f) ? 0.9f : 0.3f;
+
+        if (isFlash) blinkAlpha = 1.0f; // All lights on during flash
+
+        float lightSize = 1.2f;
+        g.setColour(getColorWithAlpha(blinkAlpha));
+        g.fillEllipse(px - lightSize, py - lightSize, lightSize * 2.0f, lightSize * 2.0f);
+    }
+
+    // 6. Glow ring (outer glow when flashing)
+    if (isFlash)
+    {
+        const int glowRingCount = 24;
+        float glowRadius = size * 1.1f;
+
+        for (int i = 0; i < glowRingCount; ++i)
+        {
+            float angle = (i / (float)glowRingCount) * juce::MathConstants<float>::twoPi;
+            float px = x + std::cos(angle) * glowRadius;
+            float py = y + std::sin(angle) * glowRadius * 0.35f;
+
+            float glowSize = 1.0f;
+            g.setColour(getColorWithAlpha(0.5f));
+            g.fillEllipse(px - glowSize, py - glowSize, glowSize * 2.0f, glowSize * 2.0f);
+        }
+    }
 }

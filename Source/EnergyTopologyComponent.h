@@ -74,8 +74,8 @@ private:
     };
     Projection3D project3D(float x, float y, float z, float cx, float cy);
 
-    // Helper: Draw sakura blossom (for Pink theme)
-    void drawSakura(juce::Graphics& g, float x, float y, float size, float rotation, float scatterAmt);
+    // Helper: Draw UFO (for Pink theme)
+    void drawUFO(juce::Graphics& g, float x, float y, float size, float rotation, bool isFlash);
 
     // Helper: Convert accent color to RGBA string equivalent
     juce::Colour getColorWithAlpha(float alpha);
