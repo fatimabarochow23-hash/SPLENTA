@@ -14,7 +14,7 @@ StealthLookAndFeel::StealthLookAndFeel()
 
     // Try to set JetBrains Mono as default font
     auto monoFont = getMonospaceFont();
-    setDefaultSansSerifTypeface(monoFont.getTypeface());
+    setDefaultSansSerifTypeface(monoFont.getTypefacePtr());
 }
 
 void StealthLookAndFeel::setPalette(const ThemePalette& newPalette)

@@ -88,11 +88,11 @@ NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor (NewProjectAudioP
     loadButton.onClick = [this] {
         // Create popup menu with presets
         juce::PopupMenu menu;
-        menu.addSectionHeading("Realistic");
+        menu.addSectionHeader("Realistic");
         menu.addItem(1, "Gunshot");
         menu.addItem(2, "Sword");
         menu.addSeparator();
-        menu.addSectionHeading("Sci-Fi");
+        menu.addSectionHeader("Sci-Fi");
         menu.addItem(3, "Laser");
         menu.addItem(4, "Pulse");
 
