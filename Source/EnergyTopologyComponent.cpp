@@ -166,8 +166,10 @@ void EnergyTopologyComponent::drawMobius(juce::Graphics& g, float width, float h
     float normalizedIntensity = intensity / 100.0f;
     float speedMultiplier = 1.0f + (normalizedIntensity * 3.0f);
 
-    for (auto& p : particles)
+    for (int i = 0; i < particles.size(); ++i)
     {
+        auto& p = particles[i];
+
         // Update particle angle (Mobius parameter 'u')
         p.angle += p.speed * speedMultiplier;
 
@@ -194,6 +196,13 @@ void EnergyTopologyComponent::drawMobius(juce::Graphics& g, float width, float h
 
         float x2d = cx + xRot;
         float y2d = cy + yRot;
+
+        // Apply scatter effect - radial burst from center
+        if (scatterAmount > 0.0f && i < numParticles)
+        {
+            x2d += particleOffsets[i].x * scatterAmount;
+            y2d += particleOffsets[i].y * scatterAmount;
+        }
 
         // Depth-based alpha
         float depthAlpha = (zRot + scale) / (2.0f * scale);
@@ -303,6 +312,13 @@ void EnergyTopologyComponent::drawMoon(juce::Graphics& g, float width, float hei
         float x2d = cx + x3d;
         float y2d = cy + y3d;
 
+        // Apply scatter effect - radial explosion from moon center
+        if (scatterAmount > 0.0f && i < numParticles)
+        {
+            x2d += particleOffsets[i].x * scatterAmount;
+            y2d += particleOffsets[i].y * scatterAmount;
+        }
+
         // Draw Sphere Dot
         if (z3d < 0.0f) {
             g.setColour(getColorWithAlpha(0.1f));
@@ -379,11 +395,21 @@ void EnergyTopologyComponent::drawNetwork(juce::Graphics& g, float width, float 
             gx += (random.nextFloat() - 0.5f) * 50.0f;
         }
 
-        nodes.push_back(juce::Point<float>(cx + gx, cy + gy));
+        float finalX = cx + gx;
+        float finalY = cy + gy;
+
+        // Apply scatter effect - network nodes scatter randomly
+        if (scatterAmount > 0.0f && i < numParticles)
+        {
+            finalX += particleOffsets[i].x * scatterAmount;
+            finalY += particleOffsets[i].y * scatterAmount;
+        }
+
+        nodes.push_back(juce::Point<float>(finalX, finalY));
 
         // Draw Node
         g.setColour(getColorWithAlpha(0.8f));
-        g.fillRect(cx + gx - 1.5f, cy + gy - 1.5f, 3.0f, 3.0f);
+        g.fillRect(finalX - 1.5f, finalY - 1.5f, 3.0f, 3.0f);
     }
 
     // Connect Neighbors
@@ -474,6 +500,16 @@ void EnergyTopologyComponent::drawCartesian(juce::Graphics& g, float width, floa
 
     auto travelerProj = project3D(tx3d, ty3d, tz3d, cx, cy);
 
+    // Apply scatter effect - traveler jitters/glitches
+    float travelerX = travelerProj.x;
+    float travelerY = travelerProj.y;
+    if (scatterAmount > 0.0f)
+    {
+        // Use first particle offset for traveler jitter
+        travelerX += particleOffsets[0].x * scatterAmount * 0.5f; // Reduced intensity for traveler
+        travelerY += particleOffsets[0].y * scatterAmount * 0.5f;
+    }
+
     // Flash effect
     float beatCycle = std::fmod(time * 1.5f, 2.0f);
     bool isFlash = beatCycle < 0.2f;
@@ -481,7 +517,7 @@ void EnergyTopologyComponent::drawCartesian(juce::Graphics& g, float width, floa
 
     g.setColour(getColorWithAlpha(flashAlpha));
     float travelerSize = 4.0f + normalizedIntensity * 3.0f;
-    g.fillEllipse(travelerProj.x - travelerSize, travelerProj.y - travelerSize,
+    g.fillEllipse(travelerX - travelerSize, travelerY - travelerSize,
                   travelerSize * 2.0f, travelerSize * 2.0f);
 
     // 3. Draw Grid Scanner around traveler
