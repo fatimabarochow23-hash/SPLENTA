@@ -36,6 +36,25 @@ void EnvelopeView::paint(juce::Graphics& g)
     // Fill background
     g.fillAll(backgroundColour);
 
+    // === Oscilloscope-Style Grid Lines (Pro-C2 inspired) ===
+    g.setFont(10.0f);
+    const float gridDBLevels[] = {-12.0f, -24.0f, -36.0f, -48.0f};
+
+    for (float db : gridDBLevels)
+    {
+        float linearValue = juce::Decibels::decibelsToGain(db);
+        float logValue = mapToLogScale(linearValue);
+        float y = height * (1.0f - logValue);
+
+        // Draw grid line
+        g.setColour(juce::Colours::white.withAlpha(0.05f));
+        g.drawLine(0.0f, y, width, y, 1.0f);
+
+        // Draw dB label on right side
+        g.setColour(juce::Colours::white.withAlpha(0.2f));
+        g.drawText(juce::String((int)db), (int)width - 30, (int)y - 8, 25, 16, juce::Justification::right, false);
+    }
+
     // === Dynamic Zoom Scaling (Module 3.2) ===
     int displayStartIndex = 0;
     int displayEndIndex = historySize;
@@ -137,8 +156,15 @@ void EnvelopeView::paint(juce::Graphics& g)
         synthPath.lineTo(width, height);
         synthPath.closeSubPath();
 
-        // Fill with semi-transparent orange
-        g.setColour(synthColour.withAlpha(0.4f));
+        // Pro-C2 style gradient fill (top to bottom, high alpha to low alpha)
+        juce::ColourGradient gradient(
+            synthColour.withAlpha(0.5f),  // Top: 50% alpha
+            0.0f, 0.0f,
+            synthColour.withAlpha(0.05f), // Bottom: 5% alpha
+            0.0f, height,
+            false
+        );
+        g.setGradientFill(gradient);
         g.fillPath(synthPath);
 
         // Stroke the top edge
@@ -162,7 +188,7 @@ void EnvelopeView::paint(juce::Graphics& g)
         }
 
         g.setColour(synthColour);
-        g.strokePath(synthStrokePath, juce::PathStrokeType(1.8f, juce::PathStrokeType::curved));
+        g.strokePath(synthStrokePath, juce::PathStrokeType(2.0f, juce::PathStrokeType::curved));
     }
 
     // === Draw Output Envelope (top layer, thinner, bright) ===
