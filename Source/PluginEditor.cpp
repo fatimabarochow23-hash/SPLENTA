@@ -58,11 +58,7 @@ NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor (NewProjectAudioP
     };
 
     // Web-Style Header (Batch 06 Task 3)
-    addAndMakeVisible(logoLabel);
-    logoLabel.setText("SPLENTA", juce::dontSendNotification);
-    logoLabel.setFont(stealthLnF.getMonospaceFont(18.0f).withStyle(juce::Font::bold));
-    logoLabel.setJustificationType(juce::Justification::centredLeft);
-    logoLabel.setColour(juce::Label::textColourId, juce::Colours::white.withAlpha(0.9f));
+    // SPLENTA logo removed per user request
 
     addAndMakeVisible(presetNameLabel);
     presetNameLabel.setText("-- No Preset --", juce::dontSendNotification);
@@ -393,8 +389,7 @@ void NewProjectAudioProcessorEditor::resized()
 {
     int startY = 290; int colW = 220; int knobSize = 60; int gap = 92;  // Reduced knob size, increased spacing
 
-    // Web-Style Header (top bar) - SPLENTA right of DETECTOR, SAVE/LOAD right of TOPOLOGY
-    logoLabel.setBounds(500, 5, 100, 24);
+    // Web-Style Header (top bar) - SAVE/LOAD right of TOPOLOGY
     saveButton.setBounds(700, 5, 60, 24);
     loadButton.setBounds(770, 5, 60, 24);
     presetNameLabel.setBounds(350, 5, 200, 24);
