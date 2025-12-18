@@ -23,6 +23,7 @@ NewProjectAudioProcessor::NewProjectAudioProcessor()
     threshParam   = apvts->getRawParameterValue("THRESHOLD");
     ceilingParam  = apvts->getRawParameterValue("CEILING");
     detReleaseParam = apvts->getRawParameterValue("DET_REL");
+    detScaleParam = apvts->getRawParameterValue("DET_SCALE");
     auditionParam = apvts->getRawParameterValue("AUDITION");
     
     freqParam     = apvts->getRawParameterValue("F_FREQ");
@@ -32,7 +33,9 @@ NewProjectAudioProcessor::NewProjectAudioProcessor()
     startFreqParam= apvts->getRawParameterValue("START_FREQ");
     peakFreqParam = apvts->getRawParameterValue("PEAK_FREQ");
     shapeParam    = apvts->getRawParameterValue("SHAPE");
-    satParam      = apvts->getRawParameterValue("SATURATION");
+    colorAmountParam = apvts->getRawParameterValue("COLOR_AMOUNT");
+    colorAttParam    = apvts->getRawParameterValue("COLOR_ATT");
+    colorDecParam    = apvts->getRawParameterValue("COLOR_DEC");
     noiseParam    = apvts->getRawParameterValue("NOISE_MIX");
     
     pAttParam     = apvts->getRawParameterValue("P_ATT");
@@ -49,6 +52,9 @@ NewProjectAudioProcessor::NewProjectAudioProcessor()
     dryParam      = apvts->getRawParameterValue("DRY_MIX");
     agmParam      = apvts->getRawParameterValue("AGM_MODE");
     clipParam     = apvts->getRawParameterValue("SOFT_CLIP");
+    bypassParam   = apvts->getRawParameterValue("BYPASS");
+    midiModeParam = apvts->getRawParameterValue("MIDI_MODE");
+    midiPitchParam= apvts->getRawParameterValue("MIDI_PITCH");
 
     // Scope Buffer Init
     scopeBuffer.setSize(1, 2048);
@@ -81,7 +87,7 @@ NewProjectAudioProcessor::NewProjectAudioProcessor()
 NewProjectAudioProcessor::~NewProjectAudioProcessor() {}
 
 const juce::String NewProjectAudioProcessor::getName() const { return JucePlugin_Name; }
-bool NewProjectAudioProcessor::acceptsMidi() const { return false; }
+bool NewProjectAudioProcessor::acceptsMidi() const { return true; }  // Enable MIDI input
 bool NewProjectAudioProcessor::producesMidi() const { return false; }
 bool NewProjectAudioProcessor::isMidiEffect() const { return false; }
 double NewProjectAudioProcessor::getTailLengthSeconds() const { return 0.0; }
@@ -96,12 +102,22 @@ void NewProjectAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     currentSampleRate = sampleRate;
     atomicSampleRate.store(sampleRate);  // Store atomic sample rate
     updateFilterCoefficients(*freqParam, *qParam);
-    updateEnvelopeIncrements(*pAttParam, *pDecParam, *aAttParam, *aDecParam, *duckAttParam, *duckDecParam, *detReleaseParam);
+    updateEnvelopeIncrements(*pAttParam, *pDecParam, *aAttParam, *aDecParam, *duckAttParam, *duckDecParam, *colorAttParam, *colorDecParam, *detReleaseParam);
     
     isTriggered = false;
     retriggerTimer = 0.0f;
     currentPhase = 0.0f;
     detectorEnv = 0.0f;
+
+    // Reset Envelope States
+    envAmplitude = 0.0f;
+    envPitchValue = 0.0f;
+    envDucking = 0.0f;
+    envColor = 0.0f;  // COLOR envelope reset
+    pitchState = 0;
+    ampState = 0;
+    duckState = 0;
+    colorState = 0;   // COLOR state reset
 
     // Reset Peak Detection
     peakSampleCounter = 0;
@@ -153,12 +169,39 @@ void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
     auto numSamples = buffer.getNumSamples();
-    
+
     float currentInputRMS = buffer.getRMSLevel(0, 0, numSamples);
     inputRMS = currentInputRMS;
 
+    // Sync MIDI messages to keyboardState (for virtual keyboard visualization)
+    keyboardState.processNextMidiBuffer(midiMessages, 0, numSamples, true);
+
+    // Process MIDI messages
+    bool midiMode = midiModeParam->load() > 0.5f;
+    bool midiPitchControl = midiPitchParam->load() > 0.5f;
+
+    for (const auto metadata : midiMessages)
+    {
+        auto message = metadata.getMessage();
+
+        if (message.isNoteOn())
+        {
+            currentMidiNote = message.getNoteNumber();
+            currentMidiVelocity = message.getVelocity() / 127.0f;
+            midiNoteOn = true;
+        }
+        else if (message.isNoteOff())
+        {
+            if (message.getNoteNumber() == currentMidiNote)
+            {
+                midiNoteOn = false;
+                currentMidiNote = -1;
+            }
+        }
+    }
+
     updateFilterCoefficients(*freqParam, *qParam);
-    updateEnvelopeIncrements(*pAttParam, *pDecParam, *aAttParam, *aDecParam, *duckAttParam, *duckDecParam, *detReleaseParam);
+    updateEnvelopeIncrements(*pAttParam, *pDecParam, *aAttParam, *aDecParam, *duckAttParam, *duckDecParam, *colorAttParam, *colorDecParam, *detReleaseParam);
     
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, numSamples);
@@ -178,10 +221,13 @@ void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
         float tf_out = bf0 * inputMono + bf1 * f_x1 + bf2 * f_x2 - af1 * f_y1 - af2 * f_y2;
         f_x2 = f_x1; f_x1 = inputMono;
         f_y2 = f_y1; f_y1 = tf_out;
-        
-        float absIn = std::abs(tf_out);
-        if (absIn > detectorEnv) detectorEnv = absIn;
-        else detectorEnv = detectorEnv * detectorReleaseCoeff + absIn * (1.0f - detectorReleaseCoeff);
+
+        // Apply Detector Scale (50-400%) to increase/decrease detector sensitivity
+        float detScale = detScaleParam->load() / 100.0f;  // Convert % to linear gain
+        float scaledInput = std::abs(tf_out) * detScale;
+
+        if (scaledInput > detectorEnv) detectorEnv = scaledInput;
+        else detectorEnv = detectorEnv * detectorReleaseCoeff + scaledInput * (1.0f - detectorReleaseCoeff);
 
         // Legacy Scope Buffer (keep for compatibility)
         scopeWrite[scopeWritePos] = tf_out;
@@ -212,17 +258,36 @@ void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
             currentMax = 0.0f;
         }
 
-        // 2. Trigger (Window)
-        float threshLin = juce::Decibels::decibelsToGain(threshParam->load());
-        float ceilingLin = juce::Decibels::decibelsToGain(ceilingParam->load());
-        bool inRange = (detectorEnv > threshLin) && (detectorEnv < ceilingLin || ceilingLin >= 0.99f); // Ceiling 0dB = off roughly
+        // 2. Trigger (Audio or MIDI)
+        bool shouldTrigger = false;
 
-        if (inRange && retriggerTimer <= 0.0f && detectorEnv > threshLin) // Ensure above thresh
+        if (midiMode)
+        {
+            // MIDI Mode: trigger on MIDI note on
+            if (midiNoteOn && retriggerTimer <= 0.0f)
+            {
+                shouldTrigger = true;
+            }
+        }
+        else
+        {
+            // Audio Mode: trigger on detector envelope
+            float threshLin = juce::Decibels::decibelsToGain(threshParam->load());
+            float ceilingLin = juce::Decibels::decibelsToGain(ceilingParam->load());
+            bool inRange = (detectorEnv > threshLin) && (detectorEnv < ceilingLin || ceilingLin >= 0.99f);
+
+            if (inRange && retriggerTimer <= 0.0f && detectorEnv > threshLin)
+            {
+                shouldTrigger = true;
+            }
+        }
+
+        if (shouldTrigger)
         {
             isTriggered = true;
             retriggerTimer = waitParam->load() * (currentSampleRate / 1000.0f);
-            envAmplitude = 0.0f; envPitchValue = 0.0f; envDucking = 0.0f;
-            pitchState = 0; ampState = 0; duckState = 0;
+            envAmplitude = 0.0f; envPitchValue = 0.0f; envDucking = 0.0f; envColor = 0.0f;
+            pitchState = 0; ampState = 0; duckState = 0; colorState = 0;
             currentPhase = 1.5707f;
         }
         if (retriggerTimer > 0.0f) retriggerTimer -= 1.0f;
@@ -239,29 +304,69 @@ void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
 
             if (duckState == 0) { envDucking += duckAttackInc; if(envDucking>=1.0f) {envDucking=1.0f; duckState=1;} }
             else { envDucking -= duckDecayInc; if(envDucking<=0.0f) envDucking=0.0f; }
+
+            // COLOR envelope (dynamic harmonic content)
+            if (colorState == 0) { envColor += colorAttackInc; if(envColor>=1.0f) {envColor=1.0f; colorState=1;} }
+            else { envColor -= colorDecayInc; if(envColor<=0.0f) envColor=0.0f; }
         }
         
-        // 4. Synthesis
+        // 4. Synthesis (Dual-Oscillator with Dynamic COLOR)
         float startFreq = startFreqParam->load();
         float peakFreq  = peakFreqParam->load();
         float oscShape  = shapeParam->load();
-        float driveAmount = satParam->load() / 100.0f;
+        float colorAmount = colorAmountParam->load() / 100.0f;  // 0.0 - 1.0
         float noiseAmount = noiseParam->load() / 100.0f;
-        
-        float currentFreq = startFreq + (peakFreq - startFreq) * envPitchValue;
+
+        // Calculate frequency (MIDI or parameter-based)
+        float currentFreq;
+        if (midiMode && midiPitchControl && currentMidiNote >= 0)
+        {
+            // MIDI Pitch Mode: use MIDI note number to calculate frequency
+            // MIDI note 69 = A4 = 440Hz
+            float baseFreq = 440.0f * std::pow(2.0f, (currentMidiNote - 69) / 12.0f);
+
+            // Apply pitch envelope as a frequency modulation (±1 octave range)
+            float pitchModSemitones = (envPitchValue - 0.5f) * 24.0f;  // -12 to +12 semitones
+            currentFreq = baseFreq * std::pow(2.0f, pitchModSemitones / 12.0f);
+        }
+        else
+        {
+            // Parameter Mode: use START_FREQ and PEAK_FREQ with envelope
+            currentFreq = startFreq + (peakFreq - startFreq) * envPitchValue;
+        }
+
         currentPhase += (currentFreq / (float)currentSampleRate) * juce::MathConstants<float>::twoPi;
         if (currentPhase > juce::MathConstants<float>::twoPi) currentPhase -= juce::MathConstants<float>::twoPi;
 
-        float oscRaw = 0.0f;
-        if (oscShape < 0.5f) oscRaw = std::sin(currentPhase);
-        else if (oscShape < 1.5f) oscRaw = 1.0f - 2.0f * std::abs((currentPhase / juce::MathConstants<float>::pi) - 1.0f);
-        else oscRaw = (currentPhase < juce::MathConstants<float>::pi) ? 1.0f : -1.0f;
+        // Generate clean oscillator (base layer)
+        float cleanOsc = 0.0f;
+        if (oscShape < 0.5f)
+            cleanOsc = std::sin(currentPhase);
+        else if (oscShape < 1.5f)
+            cleanOsc = 1.0f - 2.0f * std::abs((currentPhase / juce::MathConstants<float>::pi) - 1.0f);
+        else
+            cleanOsc = (currentPhase < juce::MathConstants<float>::pi) ? 1.0f : -1.0f;
 
+        // Generate dirty oscillator (harmonic-rich layer)
+        float dirtyOsc = cleanOsc;
+
+        // Add harmonics through waveshaping (soft clipping + asymmetric distortion)
+        float drive = 1.0f + 4.0f * colorAmount;  // Drive scales with COLOR amount
+        dirtyOsc = dirtyOsc * drive;
+        dirtyOsc = dirtyOsc / (1.0f + std::abs(dirtyOsc));  // Soft clip
+
+        // Add asymmetric harmonics (even harmonics)
+        dirtyOsc = dirtyOsc + 0.15f * colorAmount * dirtyOsc * dirtyOsc;
+
+        // Mix clean and dirty based on COLOR envelope
+        float colorMix = colorAmount * envColor;  // Dynamic modulation
+        float oscMixed = cleanOsc * (1.0f - colorMix) + dirtyOsc * colorMix;
+
+        // Add noise layer
         float noiseRaw = (juce::Random::getSystemRandom().nextFloat() * 2.0f - 1.0f) * noiseAmount;
-        float driveSig = (oscRaw + noiseRaw) * (1.0f + driveAmount * 3.0f);
-        float oscProc = driveSig / (1.0f + std::abs(driveSig));
-        
-        float finalWet = oscProc * envAmplitude * juce::Decibels::decibelsToGain(wetParam->load());
+        float oscFinal = oscMixed + noiseRaw;
+
+        float finalWet = oscFinal * envAmplitude * juce::Decibels::decibelsToGain(wetParam->load());
 
         // 5. Spectral Ducking
         float duckDB = duckParam->load();
@@ -410,6 +515,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout NewProjectAudioProcessor::cr
     layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("THRESHOLD", 1), "Thresh", juce::NormalisableRange<float>(-60.0f, 0.0f, 0.1f), -20.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
     layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("CEILING", 1), "Ceiling", juce::NormalisableRange<float>(-60.0f, 0.0f, 0.1f), 0.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
     layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("DET_REL", 1), "Rel", juce::NormalisableRange<float>(1.0f, 500.0f, 1.0f), 20.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
+    layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("DET_SCALE", 1), "Scale", juce::NormalisableRange<float>(50.0f, 400.0f, 1.0f), 100.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
     layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("WAIT_MS", 1), "Wait", juce::NormalisableRange<float>(10.0f, 1000.0f, 1.0f), 150.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
     layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("F_FREQ", 1), "F.Freq", juce::NormalisableRange<float>(20.0f, 10000.0f, 1.0f, 0.3f), 120.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
     layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("F_Q", 1), "F.Q", juce::NormalisableRange<float>(0.1f, 10.0f, 0.01f), 1.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
@@ -419,7 +525,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout NewProjectAudioProcessor::cr
     layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("START_FREQ", 1), "Start", juce::NormalisableRange<float>(20.0f, 1000.0f, 1.0f, 0.4f), 50.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
     layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("PEAK_FREQ", 1), "Peak", juce::NormalisableRange<float>(20.0f, 1000.0f, 1.0f, 0.4f), 80.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
     layout.add (std::make_unique<juce::AudioParameterChoice>(juce::ParameterID("SHAPE", 1), "Shape", juce::StringArray("Sine", "Triangle", "Square"), 0));
-    layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("SATURATION", 1), "Sat", juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 25.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
+    layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("COLOR_AMOUNT", 1), "Color", juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 40.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
+    layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("COLOR_ATT", 1), "C.Att", juce::NormalisableRange<float>(0.0f, 50.0f, 0.1f), 5.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
+    layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("COLOR_DEC", 1), "C.Dec", juce::NormalisableRange<float>(10.0f, 500.0f, 1.0f), 150.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
     layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("NOISE_MIX", 1), "Noise", juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 20.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
     
     // Envelope
@@ -437,8 +545,14 @@ juce::AudioProcessorValueTreeState::ParameterLayout NewProjectAudioProcessor::cr
     layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("MIX", 1), "Mix %", juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 50.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
     layout.add (std::make_unique<juce::AudioParameterChoice>(juce::ParameterID("AGM_MODE", 1), "AGM", juce::StringArray("Off", "On"), 0));
     layout.add (std::make_unique<juce::AudioParameterChoice>(juce::ParameterID("SOFT_CLIP", 1), "Clip", juce::StringArray("Off", "On"), 1));
+    layout.add (std::make_unique<juce::AudioParameterChoice>(juce::ParameterID("BYPASS", 1), "Bypass", juce::StringArray("Off", "On"), 0));
+
+    // MIDI
+    layout.add (std::make_unique<juce::AudioParameterChoice>(juce::ParameterID("MIDI_MODE", 1), "MIDI", juce::StringArray("Off", "On"), 0));
+    layout.add (std::make_unique<juce::AudioParameterChoice>(juce::ParameterID("MIDI_PITCH", 1), "Pitch", juce::StringArray("Off", "On"), 1));
+
     layout.add (std::make_unique<juce::AudioParameterChoice>(juce::ParameterID("THEME", 1), "Theme", juce::StringArray("Bronze", "Blue", "Purple", "Green", "Pink"), 0));
-    
+
     return layout;
 }
 
@@ -463,7 +577,7 @@ void NewProjectAudioProcessor::loadPreset(int presetIndex)
             setParameterValue("START_FREQ", 50.0f); setParameterValue("PEAK_FREQ", 800.0f); break;
         case 4:
             setParameterValue("START_FREQ", 40.0f); setParameterValue("PEAK_FREQ", 60.0f);
-            setParameterValue("SHAPE", 2.0f); setParameterValue("SATURATION", 80.0f); break;
+            setParameterValue("SHAPE", 2.0f); setParameterValue("COLOR_AMOUNT", 80.0f); break;
     }
 }
 
@@ -476,7 +590,8 @@ void NewProjectAudioProcessor::updateFilterCoefficients(float freq, float Q) {
     bf0 = b0/a0; bf1 = b1/a0; bf2 = b2/a0; af1 = a1/a0; af2 = a2/a0;
 }
 
-void NewProjectAudioProcessor::updateEnvelopeIncrements(float pAtt, float pDec, float aAtt, float aDec, float dAtt, float dDec, float detRel) {
+void NewProjectAudioProcessor::updateEnvelopeIncrements(float pAtt, float pDec, float aAtt, float aDec, float dAtt, float dDec, float cAtt, float cDec, float detRel) {
+    if (currentSampleRate <= 0.0) return;  // Safety check
     float sr_ms = (float)currentSampleRate / 1000.0f;
     pitchAttackInc = 1.0f / (pAtt * sr_ms + 1.0f);
     pitchDecayInc = 1.0f / (pDec * sr_ms + 1.0f);
@@ -484,6 +599,8 @@ void NewProjectAudioProcessor::updateEnvelopeIncrements(float pAtt, float pDec, 
     ampDecayInc = 1.0f / (aDec * sr_ms + 1.0f);
     duckAttackInc = 1.0f / (dAtt * sr_ms + 1.0f);
     duckDecayInc = 1.0f / (dDec * sr_ms + 1.0f);
+    colorAttackInc = 1.0f / (cAtt * sr_ms + 1.0f);
+    colorDecayInc = 1.0f / (cDec * sr_ms + 1.0f);
     detectorReleaseCoeff = 1.0f - std::exp(-1.0f / (detRel * sr_ms));
 }
 

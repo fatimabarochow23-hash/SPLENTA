@@ -1,82 +1,67 @@
-<?xml version="1.0" encoding="UTF-8"?>
-
-<JUCERPROJECT id="VycGdm" name="SPLENTA" projectType="audioplug" useAppConfig="0"
-              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1">
+<?xml version='1.0' encoding='UTF-8'?>
+<JUCERPROJECT id="VycGdm" name="SPLENTA" projectType="audioplug" useAppConfig="0" addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1">
   <MAINGROUP id="Kpwd8d" name="SPLENTA">
     <GROUP id="{BAB75B8F-DC22-7029-A0C0-25796381529F}" name="Source">
-      <FILE id="kcwTFH" name="PluginProcessor.cpp" compile="1" resource="0"
-            file="Source/PluginProcessor.cpp"/>
-      <FILE id="RsZ9Ac" name="PluginProcessor.h" compile="0" resource="0"
-            file="Source/PluginProcessor.h"/>
-      <FILE id="ceJJt4" name="PluginEditor.cpp" compile="1" resource="0"
-            file="Source/PluginEditor.cpp"/>
-      <FILE id="ZCfkPl" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
+      <FILE id="kcwTFH" name="PluginProcessor.cpp" compile="1" resource="0" file="Source/PluginProcessor.cpp" />
+      <FILE id="RsZ9Ac" name="PluginProcessor.h" compile="0" resource="0" file="Source/PluginProcessor.h" />
+      <FILE id="ceJJt4" name="PluginEditor.cpp" compile="1" resource="0" file="Source/PluginEditor.cpp" />
+      <FILE id="ZCfkPl" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h" />
     </GROUP>
-    <FILE id="raJmw4" name="EnergyTopologyComponent.cpp" compile="1" resource="0"
-          file="Source/EnergyTopologyComponent.cpp"/>
-    <FILE id="huQMlG" name="EnergyTopologyComponent.h" compile="0" resource="0"
-          file="Source/EnergyTopologyComponent.h"/>
-    <FILE id="egU94Z" name="EnvelopeView.cpp" compile="1" resource="0"
-          file="Source/EnvelopeView.cpp"/>
-    <FILE id="kL5fQ8" name="EnvelopeView.h" compile="0" resource="0" file="Source/EnvelopeView.h"/>
-    <FILE id="dXvaxw" name="SplitToggleComponent.cpp" compile="1" resource="0"
-          file="Source/SplitToggleComponent.cpp"/>
-    <FILE id="AKFDcx" name="SplitToggleComponent.h" compile="0" resource="0"
-          file="Source/SplitToggleComponent.h"/>
-    <FILE id="oFGYh8" name="StealthLookAndFeel.cpp" compile="1" resource="0"
-          file="Source/StealthLookAndFeel.cpp"/>
-    <FILE id="fQ9a5W" name="StealthLookAndFeel.h" compile="0" resource="0"
-          file="Source/StealthLookAndFeel.h"/>
-    <FILE id="rIIlRv" name="Theme.h" compile="0" resource="0" file="Source/Theme.h"/>
-    <FILE id="zWZxBH" name="ThemeSelector.h" compile="0" resource="0" file="Source/ThemeSelector.h"/>
-    <FILE id="SxUEGh" name="WaveformSelectorComponent.cpp" compile="1"
-          resource="0" file="Source/WaveformSelectorComponent.cpp"/>
-    <FILE id="BVuryF" name="WaveformSelectorComponent.h" compile="0" resource="0"
-          file="Source/WaveformSelectorComponent.h"/>
-  </MAINGROUP>
+    <FILE id="raJmw4" name="EnergyTopologyComponent.cpp" compile="1" resource="0" file="Source/EnergyTopologyComponent.cpp" />
+    <FILE id="huQMlG" name="EnergyTopologyComponent.h" compile="0" resource="0" file="Source/EnergyTopologyComponent.h" />
+    <FILE id="egU94Z" name="EnvelopeView.cpp" compile="1" resource="0" file="Source/EnvelopeView.cpp" />
+    <FILE id="kL5fQ8" name="EnvelopeView.h" compile="0" resource="0" file="Source/EnvelopeView.h" />
+    <FILE id="dXvaxw" name="SplitToggleComponent.cpp" compile="1" resource="0" file="Source/SplitToggleComponent.cpp" />
+    <FILE id="AKFDcx" name="SplitToggleComponent.h" compile="0" resource="0" file="Source/SplitToggleComponent.h" />
+    <FILE id="oFGYh8" name="StealthLookAndFeel.cpp" compile="1" resource="0" file="Source/StealthLookAndFeel.cpp" />
+    <FILE id="fQ9a5W" name="StealthLookAndFeel.h" compile="0" resource="0" file="Source/StealthLookAndFeel.h" />
+    <FILE id="rIIlRv" name="Theme.h" compile="0" resource="0" file="Source/Theme.h" />
+    <FILE id="zWZxBH" name="ThemeSelector.h" compile="0" resource="0" file="Source/ThemeSelector.h" />
+    <FILE id="SxUEGh" name="WaveformSelectorComponent.cpp" compile="1" resource="0" file="Source/WaveformSelectorComponent.cpp" />
+    <FILE id="BVuryF" name="WaveformSelectorComponent.h" compile="0" resource="0" file="Source/WaveformSelectorComponent.h" />
+  <FILE id="PwrBtn1" name="PowerButtonComponent.cpp" compile="1" resource="0" file="Source/PowerButtonComponent.cpp" /><FILE id="PwrBtn2" name="PowerButtonComponent.h" compile="0" resource="0" file="Source/PowerButtonComponent.h" /><FILE id="ClrCtl1" name="ColorControlComponent.cpp" compile="1" resource="0" file="Source/ColorControlComponent.cpp" /><FILE id="ClrCtl2" name="ColorControlComponent.h" compile="0" resource="0" file="Source/ColorControlComponent.h" /><FILE id="MidiTgl1" name="MidiToggleComponent.cpp" compile="1" resource="0" file="Source/MidiToggleComponent.cpp" /><FILE id="MidiTgl2" name="MidiToggleComponent.h" compile="0" resource="0" file="Source/MidiToggleComponent.h" /><FILE id="VirtKbd1" name="VirtualKeyboardComponent.cpp" compile="1" resource="0" file="Source/VirtualKeyboardComponent.cpp" /><FILE id="VirtKbd2" name="VirtualKeyboardComponent.h" compile="0" resource="0" file="Source/VirtualKeyboardComponent.h" /></MAINGROUP>
   <MODULES>
-    <MODULE id="juce_analytics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
-    <MODULE id="juce_animation" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
-    <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
-    <MODULE id="juce_audio_devices" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
-    <MODULE id="juce_audio_formats" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
-    <MODULE id="juce_audio_plugin_client" showAllCode="1" useLocalCopy="0"
-            useGlobalPath="1"/>
-    <MODULE id="juce_audio_processors" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
-    <MODULE id="juce_audio_utils" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
-    <MODULE id="juce_core" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
-    <MODULE id="juce_data_structures" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
-    <MODULE id="juce_dsp" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
-    <MODULE id="juce_events" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
-    <MODULE id="juce_graphics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
-    <MODULE id="juce_gui_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
-    <MODULE id="juce_gui_extra" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
-    <MODULE id="juce_javascript" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_analytics" showAllCode="1" useLocalCopy="0" useGlobalPath="1" />
+    <MODULE id="juce_animation" showAllCode="1" useLocalCopy="0" useGlobalPath="1" />
+    <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1" />
+    <MODULE id="juce_audio_devices" showAllCode="1" useLocalCopy="0" useGlobalPath="1" />
+    <MODULE id="juce_audio_formats" showAllCode="1" useLocalCopy="0" useGlobalPath="1" />
+    <MODULE id="juce_audio_plugin_client" showAllCode="1" useLocalCopy="0" useGlobalPath="1" />
+    <MODULE id="juce_audio_processors" showAllCode="1" useLocalCopy="0" useGlobalPath="1" />
+    <MODULE id="juce_audio_utils" showAllCode="1" useLocalCopy="0" useGlobalPath="1" />
+    <MODULE id="juce_core" showAllCode="1" useLocalCopy="0" useGlobalPath="1" />
+    <MODULE id="juce_data_structures" showAllCode="1" useLocalCopy="0" useGlobalPath="1" />
+    <MODULE id="juce_dsp" showAllCode="1" useLocalCopy="0" useGlobalPath="1" />
+    <MODULE id="juce_events" showAllCode="1" useLocalCopy="0" useGlobalPath="1" />
+    <MODULE id="juce_graphics" showAllCode="1" useLocalCopy="0" useGlobalPath="1" />
+    <MODULE id="juce_gui_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1" />
+    <MODULE id="juce_gui_extra" showAllCode="1" useLocalCopy="0" useGlobalPath="1" />
+    <MODULE id="juce_javascript" showAllCode="1" useLocalCopy="0" useGlobalPath="1" />
   </MODULES>
-  <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1" JUCE_VST3_CAN_REPLACE_VST2="0"/>
+  <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1" JUCE_VST3_CAN_REPLACE_VST2="0" />
   <EXPORTFORMATS>
     <XCODE_MAC targetFolder="Builds/MacOSX">
       <CONFIGURATIONS>
-        <CONFIGURATION isDebug="1" name="Debug" targetName="SPLENTA"/>
-        <CONFIGURATION isDebug="0" name="Release" targetName="SPLENTA"/>
+        <CONFIGURATION isDebug="1" name="Debug" targetName="SPLENTA" />
+        <CONFIGURATION isDebug="0" name="Release" targetName="SPLENTA" />
       </CONFIGURATIONS>
       <MODULEPATHS>
-        <MODULEPATH id="juce_analytics" path="../../Downloads/JUCE/modules"/>
-        <MODULEPATH id="juce_animation" path="../../Downloads/JUCE/modules"/>
-        <MODULEPATH id="juce_audio_basics" path="../../Downloads/JUCE/modules"/>
-        <MODULEPATH id="juce_audio_devices" path="../../Downloads/JUCE/modules"/>
-        <MODULEPATH id="juce_audio_formats" path="../../Downloads/JUCE/modules"/>
-        <MODULEPATH id="juce_audio_plugin_client" path="../../Downloads/JUCE/modules"/>
-        <MODULEPATH id="juce_audio_processors" path="../../Downloads/JUCE/modules"/>
-        <MODULEPATH id="juce_audio_utils" path="../../Downloads/JUCE/modules"/>
-        <MODULEPATH id="juce_core" path="../../Downloads/JUCE/modules"/>
-        <MODULEPATH id="juce_data_structures" path="../../Downloads/JUCE/modules"/>
-        <MODULEPATH id="juce_events" path="../../Downloads/JUCE/modules"/>
-        <MODULEPATH id="juce_graphics" path="../../Downloads/JUCE/modules"/>
-        <MODULEPATH id="juce_gui_basics" path="../../Downloads/JUCE/modules"/>
-        <MODULEPATH id="juce_gui_extra" path="../../Downloads/JUCE/modules"/>
-        <MODULEPATH id="juce_javascript" path="../../Downloads/JUCE/modules"/>
-        <MODULEPATH id="juce_dsp" path="../../Downloads/JUCE/modules"/>
+        <MODULEPATH id="juce_analytics" path="../../Downloads/JUCE/modules" />
+        <MODULEPATH id="juce_animation" path="../../Downloads/JUCE/modules" />
+        <MODULEPATH id="juce_audio_basics" path="../../Downloads/JUCE/modules" />
+        <MODULEPATH id="juce_audio_devices" path="../../Downloads/JUCE/modules" />
+        <MODULEPATH id="juce_audio_formats" path="../../Downloads/JUCE/modules" />
+        <MODULEPATH id="juce_audio_plugin_client" path="../../Downloads/JUCE/modules" />
+        <MODULEPATH id="juce_audio_processors" path="../../Downloads/JUCE/modules" />
+        <MODULEPATH id="juce_audio_utils" path="../../Downloads/JUCE/modules" />
+        <MODULEPATH id="juce_core" path="../../Downloads/JUCE/modules" />
+        <MODULEPATH id="juce_data_structures" path="../../Downloads/JUCE/modules" />
+        <MODULEPATH id="juce_events" path="../../Downloads/JUCE/modules" />
+        <MODULEPATH id="juce_graphics" path="../../Downloads/JUCE/modules" />
+        <MODULEPATH id="juce_gui_basics" path="../../Downloads/JUCE/modules" />
+        <MODULEPATH id="juce_gui_extra" path="../../Downloads/JUCE/modules" />
+        <MODULEPATH id="juce_javascript" path="../../Downloads/JUCE/modules" />
+        <MODULEPATH id="juce_dsp" path="../../Downloads/JUCE/modules" />
       </MODULEPATHS>
     </XCODE_MAC>
   </EXPORTFORMATS>

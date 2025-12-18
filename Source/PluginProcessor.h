@@ -74,6 +74,9 @@ public:
     std::atomic<float> inputRMS { 0.0f };
     std::atomic<float> outputRMS { 0.0f };
     std::atomic<double> atomicSampleRate { 48000.0 };  // Atomic sample rate storage
+
+    // MIDI Keyboard State (for virtual keyboard visualization)
+    juce::MidiKeyboardState keyboardState;
     
     // FFT Data
     enum { fftOrder = 11, fftSize = 1 << fftOrder };
@@ -116,26 +119,35 @@ private:
     float envAmplitude = 0.0f;
     float envPitchValue = 0.0f;
     float envDucking = 0.0f;
+    float envColor = 0.0f;  // COLOR envelope value (0.0 - 1.0)
     
     // Detector Envelope
     float detectorEnv = 0.0f;
 
+    // MIDI State
+    int currentMidiNote = -1;  // -1 = no note, 0-127 = MIDI note number
+    float currentMidiVelocity = 0.0f;  // 0.0 - 1.0
+    bool midiNoteOn = false;
+
     int pitchState = 0;
     int ampState = 0;
     int duckState = 0;
+    int colorState = 0;  // COLOR envelope state (0=idle, 1=attack, 2=decay)
 
     float pitchAttackInc = 0.0f; float pitchDecayInc = 0.0f;
     float ampAttackInc = 0.0f;   float ampDecayInc = 0.0f;
     float duckAttackInc = 0.0f;  float duckDecayInc = 0.0f;
+    float colorAttackInc = 0.0f; float colorDecayInc = 0.0f;  // COLOR envelope increments
     float detectorReleaseCoeff = 0.0f;
     
     juce::LinearSmoothedValue<float> agmGain { 1.0f };
 
     // --- 参数指针 (必须全部定义) ---
     std::atomic<float>* threshParam = nullptr;
-    std::atomic<float>* ceilingParam = nullptr; // NEW
-    std::atomic<float>* detReleaseParam = nullptr; // NEW
-    std::atomic<float>* auditionParam = nullptr; // NEW
+    std::atomic<float>* ceilingParam = nullptr;
+    std::atomic<float>* detReleaseParam = nullptr;
+    std::atomic<float>* detScaleParam = nullptr;  // Detector Scale (50-400%)
+    std::atomic<float>* auditionParam = nullptr;
 
     std::atomic<float>* freqParam = nullptr;
     std::atomic<float>* qParam = nullptr;
@@ -144,7 +156,9 @@ private:
     std::atomic<float>* startFreqParam = nullptr;
     std::atomic<float>* peakFreqParam = nullptr;
     std::atomic<float>* shapeParam = nullptr;
-    std::atomic<float>* satParam = nullptr;
+    std::atomic<float>* colorAmountParam = nullptr;  // Replaces satParam
+    std::atomic<float>* colorAttParam = nullptr;      // COLOR Attack
+    std::atomic<float>* colorDecParam = nullptr;      // COLOR Decay
     std::atomic<float>* noiseParam = nullptr;
     
     std::atomic<float>* pAttParam = nullptr;
@@ -162,9 +176,12 @@ private:
     std::atomic<float>* monitorParam = nullptr; // 保留但可能不用
     std::atomic<float>* agmParam = nullptr;
     std::atomic<float>* clipParam = nullptr;
+    std::atomic<float>* bypassParam = nullptr;  // Bypass control
+    std::atomic<float>* midiModeParam = nullptr;  // MIDI Mode toggle
+    std::atomic<float>* midiPitchParam = nullptr; // MIDI Pitch control
 
     void updateFilterCoefficients(float freq, float Q);
-    void updateEnvelopeIncrements(float pAtt, float pDec, float aAtt, float aDec, float dAtt, float dDec, float detRel);
+    void updateEnvelopeIncrements(float pAtt, float pDec, float aAtt, float aDec, float dAtt, float dDec, float cAtt, float cDec, float detRel);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (NewProjectAudioProcessor)
 };

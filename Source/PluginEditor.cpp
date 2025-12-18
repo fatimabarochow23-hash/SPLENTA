@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    PluginEditor.cpp (SPLENTA V19.0 - 20251218.01)
-    UI Migration Complete: Oscilloscope style + Trigger scatter effects
+    PluginEditor.cpp (SPLENTA V19.3 - 20251219.01)
+    MIDI Mode Complete: Virtual Keyboard + External MIDI Support
   ==============================================================================
 */
 
@@ -11,13 +11,19 @@
 
 NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor (NewProjectAudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p), envelopeView(p),
-      waveformSelector(*p.apvts), splitToggle(*p.apvts)
+      waveformSelector(*p.apvts), splitToggle(*p.apvts), powerButton(*p.apvts), colorControl(*p.apvts), midiToggle(*p.apvts)
 {
     // Custom components (Batch 06) - Add BEFORE sliders to ensure on top
     addAndMakeVisible(waveformSelector);
     waveformSelector.setAlwaysOnTop(true);
     addAndMakeVisible(splitToggle);
     splitToggle.setAlwaysOnTop(true);
+    addAndMakeVisible(powerButton);
+    powerButton.setAlwaysOnTop(true);
+    addAndMakeVisible(colorControl);
+    colorControl.setAlwaysOnTop(true);
+    addAndMakeVisible(midiToggle);
+    midiToggle.setAlwaysOnTop(true);
 
     setupKnob(threshSlider, "THRESHOLD", threshAtt, " dB");
     setupKnob(ceilingSlider,"CEILING",   ceilingAtt," dB");
@@ -28,7 +34,6 @@ NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor (NewProjectAudioP
 
     setupKnob(startFreqSlider, "START_FREQ", startFreqAtt, " Hz");
     setupKnob(peakFreqSlider,  "PEAK_FREQ",  peakFreqAtt,  " Hz");
-    setupKnob(satSlider,       "SATURATION", satAtt,       " %");
     setupKnob(noiseSlider,     "NOISE_MIX",  noiseAtt,     " %");
 
     setupKnob(pAttSlider, "P_ATT", pAttAtt, " ms");
@@ -67,8 +72,10 @@ NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor (NewProjectAudioP
     presetNameLabel.setColour(juce::Label::textColourId, juce::Colours::white.withAlpha(0.7f));
 
     addAndMakeVisible(saveButton);
-    saveButton.setButtonText("SAVE");
+    saveButton.setButtonText("");  // Empty text, icon will be drawn in paint()
     saveButton.setColour(juce::TextButton::buttonColourId, juce::Colours::transparentBlack);
+    saveButton.setColour(juce::TextButton::buttonOnColourId, juce::Colours::transparentBlack);
+    saveButton.setColour(juce::ComboBox::outlineColourId, juce::Colours::transparentBlack);
     saveButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white.withAlpha(0.6f));
     saveButton.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
     saveButton.onClick = [this] {
@@ -77,8 +84,10 @@ NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor (NewProjectAudioP
     };
 
     addAndMakeVisible(loadButton);
-    loadButton.setButtonText("LOAD");
+    loadButton.setButtonText("");  // Empty text, icon will be drawn in paint()
     loadButton.setColour(juce::TextButton::buttonColourId, juce::Colours::transparentBlack);
+    loadButton.setColour(juce::TextButton::buttonOnColourId, juce::Colours::transparentBlack);
+    loadButton.setColour(juce::ComboBox::outlineColourId, juce::Colours::transparentBlack);
     loadButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white.withAlpha(0.6f));
     loadButton.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
     loadButton.onClick = [this] {
@@ -111,6 +120,26 @@ NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor (NewProjectAudioP
 
     addAndMakeVisible(envelopeView);
     addAndMakeVisible(energyTopology);
+
+    // MIDI Virtual Keyboard setup (uses processor's keyboardState for external MIDI sync)
+    virtualKeyboard.reset(new VirtualKeyboardComponent(audioProcessor.keyboardState));
+    addChildComponent(*virtualKeyboard);  // addChildComponent = hidden by default
+    virtualKeyboard->setAlwaysOnTop(true);
+
+    // MIDI Toggle callback - show/hide keyboard
+    midiToggle.onMidiModeChanged = [this](bool enabled) {
+        showKeyboard = enabled;
+        virtualKeyboard->setVisible(showKeyboard);
+        if (showKeyboard)
+        {
+            setSize(960, 720);  // Expand height for keyboard
+        }
+        else
+        {
+            setSize(960, 620);  // Normal height
+        }
+        resized();
+    };
 
     // Apply custom LookAndFeel
     setLookAndFeel(&stealthLnF);
@@ -166,6 +195,10 @@ void NewProjectAudioProcessorEditor::updateColors()
     // Update custom components (Batch 06)
     waveformSelector.setPalette(palette);
     splitToggle.setPalette(palette);
+    powerButton.setPalette(palette);
+    colorControl.setPalette(palette);  // COLOR control theme update
+    midiToggle.setPalette(palette);  // MIDI toggle theme update
+    virtualKeyboard->setPalette(palette);  // Virtual keyboard theme update
 
     // Apply colors to sliders (use accent with alpha from map for text box color)
     auto apply = [&](juce::Slider& s) {
@@ -178,7 +211,7 @@ void NewProjectAudioProcessorEditor::updateColors()
         s.setColour(juce::Slider::textBoxTextColourId, palette.accent.withAlpha(alpha));
     };
     apply(threshSlider); apply(ceilingSlider); apply(relSlider); apply(waitSlider); apply(freqSlider); apply(qSlider);
-    apply(startFreqSlider); apply(peakFreqSlider); apply(satSlider); apply(noiseSlider);
+    apply(startFreqSlider); apply(peakFreqSlider); apply(noiseSlider);
     apply(pAttSlider); apply(pDecSlider); apply(aAttSlider); apply(aDecSlider);
     apply(duckSlider); apply(duckAttSlider); apply(duckDecSlider); apply(wetSlider); apply(drySlider); apply(mixSlider);
 }
@@ -202,6 +235,48 @@ void NewProjectAudioProcessorEditor::drawPixelHeadphone(juce::Graphics& g, int x
     std::vector<std::string> icon = { "0011111100", "0100000010", "0100000010", "1110000111", "1110000111", "1110000111", "0110000110", "0000000000" };
     g.setColour(c);
     for(int r=0; r<8; ++r) for(int c=0; c<10; ++c) if(icon[r][c]=='1') g.fillRect(x+c*scale, y+r*scale, scale, scale);
+}
+
+void NewProjectAudioProcessorEditor::drawSaveIcon(juce::Graphics& g, int x, int y, int scale, juce::Colour c)
+{
+    // Floppy disk icon (particle style) - 8x8 grid
+    std::vector<std::string> icon = {
+        "11111111",  // Top edge
+        "10000001",  // Label area
+        "10000001",
+        "11111111",  // Label bottom
+        "10000001",  // Disk body
+        "10000001",
+        "10011001",  // Metal shutter
+        "11111111"   // Bottom edge
+    };
+
+    g.setColour(c);
+    for(int r=0; r<8; ++r)
+        for(int col=0; col<8; ++col)
+            if(icon[r][col]=='1')
+                g.fillEllipse(x+col*scale, y+r*scale, scale, scale);  // Use circles for particle look
+}
+
+void NewProjectAudioProcessorEditor::drawLoadIcon(juce::Graphics& g, int x, int y, int scale, juce::Colour c)
+{
+    // Folder icon (particle style) - 8x8 grid
+    std::vector<std::string> icon = {
+        "00000000",
+        "01111000",  // Folder tab
+        "10000100",
+        "10000010",  // Folder body
+        "10000001",
+        "10000001",
+        "10000001",
+        "11111111"   // Bottom edge
+    };
+
+    g.setColour(c);
+    for(int r=0; r<8; ++r)
+        for(int col=0; col<8; ++col)
+            if(icon[r][col]=='1')
+                g.fillEllipse(x+col*scale, y+r*scale, scale, scale);  // Use circles for particle look
 }
 
 void NewProjectAudioProcessorEditor::drawPanel(juce::Graphics& g, juce::Rectangle<int> bounds, const juce::String& title, bool isActive)
@@ -300,13 +375,19 @@ void NewProjectAudioProcessorEditor::timerCallback()
 
     updateKnobAlpha(threshSlider); updateKnobAlpha(ceilingSlider); updateKnobAlpha(relSlider);
     updateKnobAlpha(waitSlider); updateKnobAlpha(freqSlider); updateKnobAlpha(qSlider);
-    updateKnobAlpha(startFreqSlider); updateKnobAlpha(peakFreqSlider); updateKnobAlpha(satSlider); updateKnobAlpha(noiseSlider);
+    updateKnobAlpha(startFreqSlider); updateKnobAlpha(peakFreqSlider); updateKnobAlpha(noiseSlider);
     updateKnobAlpha(pAttSlider); updateKnobAlpha(pDecSlider); updateKnobAlpha(aAttSlider); updateKnobAlpha(aDecSlider);
     updateKnobAlpha(duckSlider); updateKnobAlpha(duckAttSlider); updateKnobAlpha(duckDecSlider);
     updateKnobAlpha(wetSlider); updateKnobAlpha(drySlider); updateKnobAlpha(mixSlider);
 
     // Update trigger particle scatter effect in Energy Topology
     energyTopology.setTriggerState(audioProcessor.isTriggeredUI);
+
+    // Update bypass and COLOR states to Energy Topology (V19.0)
+    bool isBypassed = audioProcessor.apvts->getRawParameterValue("BYPASS")->load() > 0.5f;
+    float colorAmount = audioProcessor.apvts->getRawParameterValue("COLOR_AMOUNT")->load();
+    energyTopology.setBypassState(isBypassed);
+    energyTopology.setSaturation(colorAmount);
 
     repaint();
 }
@@ -343,11 +424,9 @@ void NewProjectAudioProcessorEditor::paint (juce::Graphics& g)
     drawPanel(g, enforcerPanel, "ENFORCER CORE", true);
     drawPanel(g, outputPanel, "MASTER OUTPUT", true);
 
-    // Position visualizers inside their panels (adjust for header)
+    // Calculate envelope area (for Scale control and trigger icon)
     const int headerHeight = 26;
     envelopeArea = detectorPanel.withTrimmedTop(headerHeight).reduced(4);
-    topologyArea = topologyPanel.withTrimmedTop(headerHeight).reduced(4);
-    envelopeView.setBounds(envelopeArea);
 
     // Trigger icon (inside detector panel)
     if (audioProcessor.isTriggeredUI) {
@@ -361,6 +440,20 @@ void NewProjectAudioProcessorEditor::paint (juce::Graphics& g)
     drawPixelHeadphone(g, auditionButton.getX(), auditionButton.getY() + 2, 2, earColor);
     g.setColour(earColor); g.setFont(12.0f);
     g.drawText("Listen", auditionButton.getX() + 25, auditionButton.getY(), 50, 20, juce::Justification::left);
+
+    // SAVE and LOAD button icons (particle style, replacing text)
+    juce::Colour buttonColor = c_text.withAlpha(0.6f);
+    int iconScale = 2;  // 2px per particle
+
+    // SAVE icon (floppy disk)
+    int saveIconX = saveButton.getX() + (saveButton.getWidth() - 8*iconScale) / 2;  // Center in button
+    int saveIconY = saveButton.getY() + (saveButton.getHeight() - 8*iconScale) / 2;
+    drawSaveIcon(g, saveIconX, saveIconY, iconScale, buttonColor);
+
+    // LOAD icon (folder)
+    int loadIconX = loadButton.getX() + (loadButton.getWidth() - 8*iconScale) / 2;  // Center in button
+    int loadIconY = loadButton.getY() + (loadButton.getHeight() - 8*iconScale) / 2;
+    drawLoadIcon(g, loadIconX, loadIconY, iconScale, buttonColor);
 
     // Section labels (below knobs, at bottom of panels)
     g.setColour(c_accent); g.setFont(juce::FontOptions(14.0f, juce::Font::bold));
@@ -380,39 +473,159 @@ void NewProjectAudioProcessorEditor::paint (juce::Graphics& g)
     };
     drawLabel(threshSlider, "Thresh"); drawLabel(ceilingSlider, "Ceiling"); drawLabel(relSlider, "Rel");
     drawLabel(waitSlider, "Wait"); drawLabel(freqSlider, "Freq"); drawLabel(qSlider, "Q");
-    drawLabel(startFreqSlider, "Start"); drawLabel(peakFreqSlider, "Peak"); drawLabel(satSlider, "Sat"); drawLabel(noiseSlider, "Noise");
+    drawLabel(startFreqSlider, "Start"); drawLabel(peakFreqSlider, "Peak"); drawLabel(noiseSlider, "Noise");
     drawLabel(pAttSlider, "P.Att"); drawLabel(pDecSlider, "P.Dec"); drawLabel(aAttSlider, "A.Att"); drawLabel(aDecSlider, "A.Dec");
     drawLabel(duckSlider, "Duck"); drawLabel(duckAttSlider, "D.Att"); drawLabel(duckDecSlider, "D.Dec");
     drawLabel(wetSlider, "Wet"); drawLabel(drySlider, "Dry"); drawLabel(mixSlider, "Mix");
 
+    // Scale control (below envelope view, centered)
+    float scaleValue = audioProcessor.apvts->getRawParameterValue("DET_SCALE")->load();
+    juce::String scaleText = juce::String((int)scaleValue) + "%";
+
+    // Calculate scale control area: below envelopeArea, centered horizontally
+    int scaleTextWidth = 50;
+    int scaleTextHeight = 24;
+    scaleControlArea = juce::Rectangle<int>(
+        envelopeArea.getX() + (envelopeArea.getWidth() - scaleTextWidth) / 2,  // Centered
+        envelopeArea.getBottom() + 5,  // 5px below envelope area
+        scaleTextWidth,
+        scaleTextHeight
+    );
+
+    // Draw scale text with theme color (style reference: images 1-3)
+    juce::Colour scaleColor = isDraggingScale ? c_accent : c_accent.withAlpha(0.7f);
+    g.setColour(scaleColor);
+    g.setFont(juce::FontOptions(16.0f, juce::Font::bold));  // Larger font like reference images
+    g.drawText(scaleText, scaleControlArea, juce::Justification::centred);
+
     // Footer branding removed (per user request - causes lag even with static white colors)
+}
+
+void NewProjectAudioProcessorEditor::mouseDown(const juce::MouseEvent& event)
+{
+    // Check if clicking on scale control
+    if (scaleControlArea.contains(event.getPosition()))
+    {
+        isDraggingScale = true;
+        scaleValueOnMouseDown = audioProcessor.apvts->getRawParameterValue("DET_SCALE")->load();
+        mouseYOnScaleDown = event.getMouseDownY();
+        repaint();
+    }
+}
+
+void NewProjectAudioProcessorEditor::mouseDrag(const juce::MouseEvent& event)
+{
+    if (isDraggingScale)
+    {
+        // Calculate delta (inverted: up = increase, down = decrease)
+        int deltaY = mouseYOnScaleDown - event.y;  // Inverted
+        float sensitivity = 0.5f;  // 0.5% per pixel
+        float newValue = scaleValueOnMouseDown + (deltaY * sensitivity);
+
+        // Clamp to range [50, 400]
+        newValue = juce::jlimit(50.0f, 400.0f, newValue);
+
+        // Update parameter
+        if (auto* param = dynamic_cast<juce::AudioParameterFloat*>(audioProcessor.apvts->getParameter("DET_SCALE")))
+        {
+            float normalised = param->getNormalisableRange().convertTo0to1(newValue);
+            param->setValueNotifyingHost(normalised);
+        }
+
+        repaint();
+    }
+}
+
+void NewProjectAudioProcessorEditor::mouseUp(const juce::MouseEvent& event)
+{
+    if (isDraggingScale)
+    {
+        isDraggingScale = false;
+        repaint();
+    }
 }
 
 void NewProjectAudioProcessorEditor::resized()
 {
     int startY = 290; int colW = 220; int knobSize = 60; int gap = 92;  // Reduced knob size, increased spacing
 
+    // Constants for panel layout
+    const int margin = 10;
+    const int spacing = 10;
+    const int topPanelHeight = 230;
+    const int headerHeight = 26;
+    const int detectorPanelX = 10;
+    const int detectorPanelY = 10;
+    const int detectorPanelWidth = 470;
+
+    // Calculate panel areas (must match paint())
+    juce::Rectangle<int> detectorPanel(margin, margin, 470, topPanelHeight);
+    juce::Rectangle<int> topologyPanel(detectorPanel.getRight() + spacing, margin, 460, topPanelHeight);
+
+    // Calculate envelope and topology areas
+    envelopeArea = detectorPanel.withTrimmedTop(headerHeight).reduced(4);
+    topologyArea = topologyPanel.withTrimmedTop(headerHeight).reduced(4);
+
+    // Set EnvelopeView bounds
+    envelopeView.setBounds(envelopeArea);
+
+    // Calculate Scale control area (bottom-right of envelope area)
+    int scaleTextWidth = 50;
+    int scaleTextHeight = 24;
+    scaleControlArea = juce::Rectangle<int>(
+        envelopeArea.getRight() - scaleTextWidth - 10,
+        envelopeArea.getBottom() - scaleTextHeight - 10,
+        scaleTextWidth,
+        scaleTextHeight
+    );
+
     // Web-Style Header (top bar) - SAVE/LOAD right of TOPOLOGY
     saveButton.setBounds(650, 5, 60, 24);
     loadButton.setBounds(720, 5, 60, 24);
-    presetNameLabel.setBounds(350, 5, 200, 24);
     themeSelector.setBounds(790, 5, 110, 24);
+
+    // Preset Name Label - positioned INSIDE INPUT DETECTOR panel header (green box left)
+    // Place in the center-right of INPUT DETECTOR header area
+    presetNameLabel.setBounds(detectorPanelX + 180,  // Center-right in detector header
+                              detectorPanelY + 6,     // Vertically centered in 26px header
+                              200, 14);               // Width 200px, height 14px
+
+    // Power button - positioned at ENERGY TOPOLOGY panel right corner (moved down by button diameter)
+    // TOPOLOGY panel: starts at 490, width 460, so right edge is at 950
+    int topologyPanelX = detectorPanelX + detectorPanelWidth + spacing;  // 490
+    int topologyPanelWidth = 460;
+    powerButton.setBounds(topologyPanelX + topologyPanelWidth - 44,  // Right edge minus 44px = 906
+                          detectorPanelY + 4 + 36,                   // Y=14+36=50, moved down by button diameter
+                          36, 36);                                     // 36x36 button
 
     // Custom components (Batch 06)
     waveformSelector.setBounds(20 + colW, startY + gap*2, 150, 28);  // Replace shapeBox
     splitToggle.setBounds(850, startY, 75, 75);  // Output panel right side, no overlap
 
     // Energy Topology bounds (matches paint() panel calculation)
-    const int margin = 10;
-    const int spacing = 10;
-    const int topPanelHeight = 230;
-    const int headerHeight = 26;
-
     juce::Rectangle<int> topologyPanelArea(490, margin, 460, topPanelHeight);
     energyTopology.setBounds(topologyPanelArea.withTrimmedTop(headerHeight).reduced(4));
 
     threshSlider.setBounds (20, startY, knobSize, knobSize); ceilingSlider.setBounds(100, startY, knobSize, knobSize); relSlider.setBounds(20, startY + gap, knobSize, knobSize); waitSlider.setBounds(100, startY + gap, knobSize, knobSize); freqSlider.setBounds(20, startY + gap*2, knobSize, knobSize); qSlider.setBounds(100, startY + gap*2, knobSize, knobSize); auditionButton.setBounds(20, startY + gap*3, 40, 25);
-    startFreqSlider.setBounds (20 + colW, startY, knobSize, knobSize); peakFreqSlider.setBounds(100 + colW, startY, knobSize, knobSize); satSlider.setBounds(20 + colW, startY + gap, knobSize, knobSize); noiseSlider.setBounds(100 + colW, startY + gap, knobSize, knobSize);
+    startFreqSlider.setBounds (20 + colW, startY, knobSize, knobSize);
+    peakFreqSlider.setBounds(100 + colW, startY, knobSize, knobSize);
+
+    // COLOR Control - replaces satSlider, larger custom component
+    colorControl.setBounds(20 + colW, startY + gap, 150, 90);
+
+    // Noise slider - moved to right of COLOR control
+    noiseSlider.setBounds(175 + colW, startY + gap + 15, knobSize, knobSize);
     pAttSlider.setBounds (20 + colW*2, startY, knobSize, knobSize); pDecSlider.setBounds(100 + colW*2, startY, knobSize, knobSize); aAttSlider.setBounds(20 + colW*2, startY + gap, knobSize, knobSize); aDecSlider.setBounds(100 + colW*2, startY + gap, knobSize, knobSize);
     duckSlider.setBounds (20 + colW*3, startY, knobSize, knobSize); mixSlider.setBounds(100 + colW*3, startY, knobSize, knobSize); duckAttSlider.setBounds(20 + colW*3, startY + gap, knobSize, knobSize); duckDecSlider.setBounds(100 + colW*3, startY + gap, knobSize, knobSize); wetSlider.setBounds(20 + colW*3, startY + gap*2, knobSize, knobSize); drySlider.setBounds(100 + colW*3, startY + gap*2, knobSize, knobSize);
+
+    // MIDI Toggle - small icon in bottom-right corner (always at same position)
+    // Position relative to 620px height, stays fixed even when keyboard expands window
+    midiToggle.setBounds(getWidth() - 34, 620 - 24, 24, 16);
+
+    // Virtual Keyboard (bottom of window when visible)
+    if (showKeyboard)
+    {
+        int keyboardHeight = 100;
+        virtualKeyboard->setBounds(0, getHeight() - keyboardHeight, getWidth(), keyboardHeight);
+    }
 }

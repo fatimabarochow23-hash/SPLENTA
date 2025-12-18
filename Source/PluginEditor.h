@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    PluginEditor.h (SPLENTA V19.0 - 20251218.01)
-    Batch 06: Custom Controls (Waveform & Split-Toggle) + Web-Style Header
+    PluginEditor.h (SPLENTA V19.3 - 20251219.01)
+    MIDI Mode Complete: Virtual Keyboard + External MIDI Support
   ==============================================================================
 */
 
@@ -16,6 +16,10 @@
 #include "EnergyTopologyComponent.h"
 #include "WaveformSelectorComponent.h"
 #include "SplitToggleComponent.h"
+#include "PowerButtonComponent.h"
+#include "ColorControlComponent.h"
+#include "MidiToggleComponent.h"
+#include "VirtualKeyboardComponent.h"
 
 class NewProjectAudioProcessorEditor  : public juce::AudioProcessorEditor,
                                         public juce::Timer
@@ -29,6 +33,10 @@ public:
     void timerCallback() override;
     void updateColors();
 
+    void mouseDown(const juce::MouseEvent& event) override;
+    void mouseDrag(const juce::MouseEvent& event) override;
+    void mouseUp(const juce::MouseEvent& event) override;
+
 private:
     NewProjectAudioProcessor& audioProcessor;
 
@@ -39,8 +47,8 @@ private:
     juce::Slider threshSlider, ceilingSlider, relSlider, waitSlider, freqSlider, qSlider;
     std::unique_ptr<SliderAttachment> threshAtt, ceilingAtt, relAtt, waitAtt, freqAtt, qAtt;
 
-    juce::Slider startFreqSlider, peakFreqSlider, satSlider, noiseSlider;
-    std::unique_ptr<SliderAttachment> startFreqAtt, peakFreqAtt, satAtt, noiseAtt;
+    juce::Slider startFreqSlider, peakFreqSlider, noiseSlider;
+    std::unique_ptr<SliderAttachment> startFreqAtt, peakFreqAtt, noiseAtt;
 
     juce::Slider pAttSlider, pDecSlider, aAttSlider, aDecSlider;
     std::unique_ptr<SliderAttachment> pAttAtt, pDecAtt, aAttAtt, aDecAtt;
@@ -51,6 +59,9 @@ private:
     // Custom components (Batch 06)
     WaveformSelectorComponent waveformSelector;
     SplitToggleComponent splitToggle;
+    PowerButtonComponent powerButton;  // Bypass control
+    ColorControlComponent colorControl;  // Replaces Saturation knob
+    MidiToggleComponent midiToggle;  // MIDI Mode & Pitch control
 
     // Web-Style Header (Batch 06 Task 3)
     juce::Label logoLabel;
@@ -68,10 +79,16 @@ private:
     EnergyTopologyComponent energyTopology;
     juce::Rectangle<int> envelopeArea, topologyArea;
 
+    // MIDI Virtual Keyboard (uses audioProcessor.keyboardState)
+    std::unique_ptr<VirtualKeyboardComponent> virtualKeyboard;
+    bool showKeyboard = false;
+
     void setupKnob(juce::Slider& slider, const juce::String& id, std::unique_ptr<SliderAttachment>& attachment, const juce::String& suffix);
     void drawPixelArt(juce::Graphics& g, int x, int y, int scale, juce::Colour c, int type);
     void drawPixelHeadphone(juce::Graphics& g, int x, int y, int scale, juce::Colour c);
     void drawPanel(juce::Graphics& g, juce::Rectangle<int> bounds, const juce::String& title, bool isActive);
+    void drawSaveIcon(juce::Graphics& g, int x, int y, int scale, juce::Colour c);
+    void drawLoadIcon(juce::Graphics& g, int x, int y, int scale, juce::Colour c);
 
     // Panel layout areas
     juce::Rectangle<int> detectorPanel, enforcerPanel, topologyPanel, outputPanel;
@@ -84,6 +101,12 @@ private:
 
     // Knob value alpha tracking for fade effect
     std::map<juce::Slider*, float> knobTextAlpha;
+
+    // Scale control state
+    juce::Rectangle<int> scaleControlArea;
+    bool isDraggingScale = false;
+    float scaleValueOnMouseDown = 100.0f;
+    int mouseYOnScaleDown = 0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (NewProjectAudioProcessorEditor)
 };
