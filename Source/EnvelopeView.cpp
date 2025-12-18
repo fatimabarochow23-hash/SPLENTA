@@ -1,6 +1,6 @@
 /*
   ==============================================================================
-    EnvelopeView.cpp (SPLENTA V18.6 - 20251212.01)
+    EnvelopeView.cpp (SPLENTA V19.0 - 20251218.01)
     Extended Temporal Window & Dynamic Zoom Visualization
   ==============================================================================
 */

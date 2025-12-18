@@ -1,6 +1,6 @@
 /*
   ==============================================================================
-    StealthLookAndFeel.cpp (SPLENTA V18.7 - 20251216.10)
+    StealthLookAndFeel.cpp (SPLENTA V19.0 - 20251218.01)
     Custom LookAndFeel for Knob & Fader Interactive Feedback + JetBrains Mono
   ==============================================================================
 */

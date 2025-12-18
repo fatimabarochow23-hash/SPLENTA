@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    PluginEditor.cpp (SPLENTA V18.7 - 20251216.10)
-    Batch 06: Custom Controls (Waveform & Split-Toggle) + Web-Style Header
+    PluginEditor.cpp (SPLENTA V19.0 - 20251218.01)
+    UI Migration Complete: Oscilloscope style + Trigger scatter effects
   ==============================================================================
 */
 

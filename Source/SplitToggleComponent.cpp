@@ -1,6 +1,6 @@
 /*
   ==============================================================================
-    SplitToggleComponent.cpp (SPLENTA V18.7 - 20251216.10)
+    SplitToggleComponent.cpp (SPLENTA V19.0 - 20251218.01)
     Batch 06: Split Dual Toggle (Diagonal Split Button with A/C)
   ==============================================================================
 */

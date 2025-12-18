@@ -1,6 +1,6 @@
 /*
   ==============================================================================
-    WaveformSelectorComponent.cpp (SPLENTA V18.7 - 20251216.10)
+    WaveformSelectorComponent.cpp (SPLENTA V19.0 - 20251218.01)
     Batch 06: Custom Waveform Selector (Sliding Toggle)
   ==============================================================================
 */

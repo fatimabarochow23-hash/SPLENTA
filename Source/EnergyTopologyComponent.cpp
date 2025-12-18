@@ -1,6 +1,6 @@
 /*
   ==============================================================================
-    EnergyTopologyComponent.cpp (SPLENTA V18.6 - 20251216.08)
+    EnergyTopologyComponent.cpp (SPLENTA V19.0 - 20251218.01)
     Energy Topology: Radial Gradient Glow Optimization
   ==============================================================================
 */

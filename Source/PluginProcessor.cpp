@@ -1,6 +1,6 @@
 /*
   ==============================================================================
-    PluginProcessor.cpp (SPLENTA V18.6 - 20251212.01)
+    PluginProcessor.cpp (SPLENTA V19.0 - 20251218.01)
     Temporal Window Optimization & Dynamic Scaling
   ==============================================================================
 */
