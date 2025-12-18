@@ -93,10 +93,10 @@ void EnergyTopologyComponent::timerCallback()
     float speedMultiplier = 1.0f + (normalizedIntensity * 3.0f);
     time += 0.01f * speedMultiplier;
 
-    // Decay scatter effect (fast recovery - exponential decay)
+    // Decay scatter effect (slower recovery for stronger impact feel)
     if (scatterAmount > 0.0f)
     {
-        scatterAmount *= 0.90f; // Decay by 10% per frame (very fast at 60fps)
+        scatterAmount *= 0.95f; // Decay by 5% per frame (doubled recovery time at 60fps)
         if (scatterAmount < 0.01f)
             scatterAmount = 0.0f;
     }
