@@ -121,27 +121,28 @@ void RetriggerModeSelector::drawHardIcon(juce::Graphics& g, juce::Rectangle<floa
 
 void RetriggerModeSelector::drawSoftIcon(juce::Graphics& g, juce::Rectangle<float> bounds, juce::Colour color)
 {
-    // Soft Retrigger: Two gentle fade-out curves (gradual decline)
+    // Soft Retrigger: Two gentle fade-out curves (wider spacing, gradual decline)
     g.setColour(color);
 
-    juce::Path path;
     float x1 = bounds.getX();
-    float x2 = bounds.getRight();
+    float width = bounds.getWidth();
     float yTop = bounds.getY() + bounds.getHeight() * 0.2f;
-    float yMid = bounds.getY() + bounds.getHeight() * 0.6f;
     float yBottom = bounds.getBottom();
 
-    // First curve (main envelope)
-    path.startNewSubPath(x1, yTop);
-    path.lineTo(x1 + bounds.getWidth() * 0.5f, yMid);  // Gentle slope
-    path.lineTo(x2, yBottom);
+    // First curve (left side, gentle fade-out)
+    juce::Path curve1;
+    curve1.startNewSubPath(x1, yTop);
+    curve1.quadraticTo(x1 + width * 0.3f, yTop + (yBottom - yTop) * 0.4f,
+                       x1 + width * 0.45f, yBottom);
 
-    // Second curve (blended envelope, slightly offset)
-    path.startNewSubPath(x1 + bounds.getWidth() * 0.15f, yTop);
-    path.lineTo(x1 + bounds.getWidth() * 0.6f, yMid);
-    path.lineTo(x2, yBottom);
+    // Second curve (right side, wider spacing)
+    juce::Path curve2;
+    curve2.startNewSubPath(x1 + width * 0.3f, yTop);
+    curve2.quadraticTo(x1 + width * 0.6f, yTop + (yBottom - yTop) * 0.4f,
+                       x1 + width * 0.75f, yBottom);
 
-    g.strokePath(path, juce::PathStrokeType(1.5f));
+    g.strokePath(curve1, juce::PathStrokeType(1.5f));
+    g.strokePath(curve2, juce::PathStrokeType(1.5f));
 }
 
 void RetriggerModeSelector::resized()
