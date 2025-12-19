@@ -60,6 +60,16 @@ void EnergyTopologyComponent::setIntensity(float intensityValue)
     intensity = juce::jlimit(0.0f, 100.0f, intensityValue);
 }
 
+void EnergyTopologyComponent::setBypassState(bool bypassed)
+{
+    isBypassed = bypassed;
+}
+
+void EnergyTopologyComponent::setSaturation(float satValue)
+{
+    saturation = juce::jlimit(0.0f, 100.0f, satValue);
+}
+
 void EnergyTopologyComponent::setTriggerState(bool isTriggered)
 {
     // Detect rising edge (false -> true)
@@ -87,10 +97,40 @@ juce::Colour EnergyTopologyComponent::getColorWithAlpha(float alpha)
     return palette.accent.withAlpha(alpha);
 }
 
+float EnergyTopologyComponent::getParticleSizeMultiplier() const
+{
+    float sizeMultiplier = 1.0f;
+
+    // Bypass: reduce particle size to 70% (smaller, calmer appearance)
+    if (isBypassed)
+    {
+        sizeMultiplier *= 0.7f;
+    }
+
+    // Saturation: increase size up to +20% at max SAT (subtle growth)
+    float normalizedSat = saturation / 100.0f;
+    sizeMultiplier *= (1.0f + normalizedSat * 0.2f);
+
+    return sizeMultiplier;
+}
+
 void EnergyTopologyComponent::timerCallback()
 {
     float normalizedIntensity = intensity / 100.0f;
+    float normalizedSat = saturation / 100.0f;  // 0.0 to 1.0
+
+    // Base speed multiplier from intensity
     float speedMultiplier = 1.0f + (normalizedIntensity * 3.0f);
+
+    // Apply bypass slow-down: reduce speed to 30% when bypassed
+    if (isBypassed)
+    {
+        speedMultiplier *= 0.3f;  // Gentle, calm motion
+    }
+
+    // Apply saturation speed boost: up to +30% speed at max SAT
+    speedMultiplier *= (1.0f + normalizedSat * 0.3f);
+
     time += 0.01f * speedMultiplier;
 
     // Decay scatter effect (slower recovery for stronger impact feel)
@@ -212,7 +252,9 @@ void EnergyTopologyComponent::drawMobius(juce::Graphics& g, float width, float h
         float depthAlpha = (zRot + scale) / (2.0f * scale);
         float alpha = juce::jlimit(0.1f, 1.0f, depthAlpha) * (0.5f + normalizedIntensity * 0.5f);
 
-        float size = (2.0f + normalizedIntensity * 2.0f) * alpha;
+        // Particle size with bypass/SAT modulation
+        float baseSize = 2.0f + normalizedIntensity * 2.0f;
+        float size = baseSize * alpha * getParticleSizeMultiplier();
 
         g.setColour(getColorWithAlpha(alpha));
         g.fillEllipse(x2d - size, y2d - size, size * 2.0f, size * 2.0f);
@@ -274,7 +316,8 @@ void EnergyTopologyComponent::drawWaves(juce::Graphics& g, float width, float he
             }
 
             float alpha = ((zFinal + scale) / (scale * 2.0f)) * 0.8f + 0.2f;
-            float size = 2.0f * persp + (heightVal * 10.0f * normalizedIntensity);
+            float baseSize = 2.0f * persp + (heightVal * 10.0f * normalizedIntensity);
+            float size = baseSize * getParticleSizeMultiplier();
 
             g.setColour(getColorWithAlpha(alpha));
             g.fillEllipse(x2d - size, y2d - size, juce::jmax(1.0f, size) * 2.0f, juce::jmax(1.0f, size) * 2.0f);
@@ -330,7 +373,8 @@ void EnergyTopologyComponent::drawMoon(juce::Graphics& g, float width, float hei
             float alpha = 0.3f + (z3d / scale) * 0.7f;
             g.setColour(getColorWithAlpha(alpha));
         }
-        float dotSize = 1.5f + normalizedIntensity;
+        float baseDotSize = 1.5f + normalizedIntensity;
+        float dotSize = baseDotSize * getParticleSizeMultiplier();
         g.fillEllipse(x2d - dotSize, y2d - dotSize, dotSize * 2.0f, dotSize * 2.0f);
     }
 
@@ -411,9 +455,11 @@ void EnergyTopologyComponent::drawNetwork(juce::Graphics& g, float width, float 
 
         nodes.push_back(juce::Point<float>(finalX, finalY));
 
-        // Draw Node
+        // Draw Node (square shape)
         g.setColour(getColorWithAlpha(0.8f));
-        g.fillRect(finalX - 1.5f, finalY - 1.5f, 3.0f, 3.0f);
+        float baseNodeSize = 1.5f;
+        float nodeSize = baseNodeSize * getParticleSizeMultiplier();
+        g.fillRect(finalX - nodeSize, finalY - nodeSize, nodeSize * 2.0f, nodeSize * 2.0f);
     }
 
     // Connect Neighbors
@@ -560,7 +606,8 @@ void EnergyTopologyComponent::drawCartesian(juce::Graphics& g, float width, floa
 
             // Exhaust particle appearance (glowing dots)
             float particleAlpha = (1.0f - trailAge) * 0.6f;
-            float particleSize = (3.0f + random.nextFloat() * 2.0f) * (1.0f - trailAge * 0.7f);
+            float baseParticleSize = (3.0f + random.nextFloat() * 2.0f) * (1.0f - trailAge * 0.7f);
+            float particleSize = baseParticleSize * getParticleSizeMultiplier();
 
             // Draw circular exhaust particle
             g.setColour(getColorWithAlpha(particleAlpha));
@@ -573,7 +620,8 @@ void EnergyTopologyComponent::drawCartesian(juce::Graphics& g, float width, floa
     float beatCycle = std::fmod(time * 1.5f, 2.0f);
     bool isFlash = beatCycle < 0.2f;
 
-    float ufoSize = 20.0f + normalizedIntensity * 10.0f;
+    float baseUfoSize = 20.0f + normalizedIntensity * 10.0f;
+    float ufoSize = baseUfoSize * getParticleSizeMultiplier();
     float rotation = time * 2.0f;
 
     drawUFO(g, travelerProj.x, travelerProj.y, ufoSize, rotation, isFlash);

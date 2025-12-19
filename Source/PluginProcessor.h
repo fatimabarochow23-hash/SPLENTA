@@ -50,9 +50,15 @@ public:
     void setParameterValue(const juce::String& paramID, float value);
 
     // --- UI Shared Data (Public) ---
-    // V17 使用 AudioBuffer 做示波器缓冲
-    juce::AudioBuffer<float> scopeBuffer;
+    // V19.3 两路独立示波器缓冲 (Detector/Output)
+    juce::AudioBuffer<float> scopeBuffer;  // Legacy, kept for compatibility
     std::atomic<int> scopeWritePos { 0 };
+
+    // Two independent buffers for oscilloscope visualization
+    static constexpr int dualScopeBufferSize = 48000;  // 1 second @ 48kHz
+    juce::AudioBuffer<float> detectorScopeBuffer;      // Detector filtered input
+    juce::AudioBuffer<float> outputScopeBuffer;        // Final mixed output
+    std::atomic<int> dualScopeWritePos { 0 };          // Shared write position
 
     // Min/Max Peak Detection Buffer for Scope (V18)
     struct PeakPair {
@@ -74,6 +80,9 @@ public:
     std::atomic<float> inputRMS { 0.0f };
     std::atomic<float> outputRMS { 0.0f };
     std::atomic<double> atomicSampleRate { 48000.0 };  // Atomic sample rate storage
+
+    // Retrigger mode for UI (Hard vs Soft retrigger)
+    std::atomic<bool> retriggerModeHard { true };  // true=Hard, false=Soft
 
     // MIDI Keyboard State (for virtual keyboard visualization)
     juce::MidiKeyboardState keyboardState;
@@ -113,7 +122,6 @@ private:
     float dry_hp_y1[2] = {0.0f, 0.0f};
 
     bool isTriggered = false;
-    float retriggerTimer = 0.0f;
     float currentPhase = 0.0f;
 
     float envAmplitude = 0.0f;
@@ -151,7 +159,6 @@ private:
 
     std::atomic<float>* freqParam = nullptr;
     std::atomic<float>* qParam = nullptr;
-    std::atomic<float>* waitParam = nullptr;
     
     std::atomic<float>* startFreqParam = nullptr;
     std::atomic<float>* peakFreqParam = nullptr;

@@ -11,7 +11,7 @@
 
 NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor (NewProjectAudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p), envelopeView(p),
-      waveformSelector(*p.apvts), splitToggle(*p.apvts), powerButton(*p.apvts), colorControl(*p.apvts), midiToggle(*p.apvts)
+      waveformSelector(*p.apvts), splitToggle(*p.apvts), powerButton(*p.apvts), colorControl(*p.apvts), midiToggle(*p.apvts), retriggerModeSelector(p)
 {
     // Custom components (Batch 06) - Add BEFORE sliders to ensure on top
     addAndMakeVisible(waveformSelector);
@@ -24,11 +24,12 @@ NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor (NewProjectAudioP
     colorControl.setAlwaysOnTop(true);
     addAndMakeVisible(midiToggle);
     midiToggle.setAlwaysOnTop(true);
+    addAndMakeVisible(retriggerModeSelector);
+    retriggerModeSelector.setAlwaysOnTop(true);
 
     setupKnob(threshSlider, "THRESHOLD", threshAtt, " dB");
     setupKnob(ceilingSlider,"CEILING",   ceilingAtt," dB");
     setupKnob(relSlider,    "DET_REL",   relAtt,    " ms");
-    setupKnob(waitSlider,   "WAIT_MS",   waitAtt,   " ms");
     setupKnob(freqSlider,   "F_FREQ",    freqAtt,   " Hz");
     setupKnob(qSlider,      "F_Q",       qAtt,      "");
 
@@ -198,6 +199,7 @@ void NewProjectAudioProcessorEditor::updateColors()
     powerButton.setPalette(palette);
     colorControl.setPalette(palette);  // COLOR control theme update
     midiToggle.setPalette(palette);  // MIDI toggle theme update
+    retriggerModeSelector.setPalette(palette);  // Retrigger mode selector theme update
     virtualKeyboard->setPalette(palette);  // Virtual keyboard theme update
 
     // Apply colors to sliders (use accent with alpha from map for text box color)
@@ -210,7 +212,7 @@ void NewProjectAudioProcessorEditor::updateColors()
         float alpha = knobTextAlpha[&s];
         s.setColour(juce::Slider::textBoxTextColourId, palette.accent.withAlpha(alpha));
     };
-    apply(threshSlider); apply(ceilingSlider); apply(relSlider); apply(waitSlider); apply(freqSlider); apply(qSlider);
+    apply(threshSlider); apply(ceilingSlider); apply(relSlider); apply(freqSlider); apply(qSlider);
     apply(startFreqSlider); apply(peakFreqSlider); apply(noiseSlider);
     apply(pAttSlider); apply(pDecSlider); apply(aAttSlider); apply(aDecSlider);
     apply(duckSlider); apply(duckAttSlider); apply(duckDecSlider); apply(wetSlider); apply(drySlider); apply(mixSlider);
@@ -374,7 +376,7 @@ void NewProjectAudioProcessorEditor::timerCallback()
     };
 
     updateKnobAlpha(threshSlider); updateKnobAlpha(ceilingSlider); updateKnobAlpha(relSlider);
-    updateKnobAlpha(waitSlider); updateKnobAlpha(freqSlider); updateKnobAlpha(qSlider);
+    updateKnobAlpha(freqSlider); updateKnobAlpha(qSlider);
     updateKnobAlpha(startFreqSlider); updateKnobAlpha(peakFreqSlider); updateKnobAlpha(noiseSlider);
     updateKnobAlpha(pAttSlider); updateKnobAlpha(pDecSlider); updateKnobAlpha(aAttSlider); updateKnobAlpha(aDecSlider);
     updateKnobAlpha(duckSlider); updateKnobAlpha(duckAttSlider); updateKnobAlpha(duckDecSlider);
@@ -472,7 +474,7 @@ void NewProjectAudioProcessorEditor::paint (juce::Graphics& g)
         g.drawText(name, s.getX(), s.getY() - 15, s.getWidth(), 15, juce::Justification::centred);
     };
     drawLabel(threshSlider, "Thresh"); drawLabel(ceilingSlider, "Ceiling"); drawLabel(relSlider, "Rel");
-    drawLabel(waitSlider, "Wait"); drawLabel(freqSlider, "Freq"); drawLabel(qSlider, "Q");
+    drawLabel(freqSlider, "Freq"); drawLabel(qSlider, "Q");
     drawLabel(startFreqSlider, "Start"); drawLabel(peakFreqSlider, "Peak"); drawLabel(noiseSlider, "Noise");
     drawLabel(pAttSlider, "P.Att"); drawLabel(pDecSlider, "P.Dec"); drawLabel(aAttSlider, "A.Att"); drawLabel(aDecSlider, "A.Dec");
     drawLabel(duckSlider, "Duck"); drawLabel(duckAttSlider, "D.Att"); drawLabel(duckDecSlider, "D.Dec");
@@ -599,6 +601,7 @@ void NewProjectAudioProcessorEditor::resized()
                           36, 36);                                     // 36x36 button
 
     // Custom components (Batch 06)
+    retriggerModeSelector.setBounds(20 + colW - 110, startY + gap*2, 100, 28);  // Left of waveform selector
     waveformSelector.setBounds(20 + colW, startY + gap*2, 150, 28);  // Replace shapeBox
     splitToggle.setBounds(850, startY, 75, 75);  // Output panel right side, no overlap
 
@@ -606,7 +609,12 @@ void NewProjectAudioProcessorEditor::resized()
     juce::Rectangle<int> topologyPanelArea(490, margin, 460, topPanelHeight);
     energyTopology.setBounds(topologyPanelArea.withTrimmedTop(headerHeight).reduced(4));
 
-    threshSlider.setBounds (20, startY, knobSize, knobSize); ceilingSlider.setBounds(100, startY, knobSize, knobSize); relSlider.setBounds(20, startY + gap, knobSize, knobSize); waitSlider.setBounds(100, startY + gap, knobSize, knobSize); freqSlider.setBounds(20, startY + gap*2, knobSize, knobSize); qSlider.setBounds(100, startY + gap*2, knobSize, knobSize); auditionButton.setBounds(20, startY + gap*3, 40, 25);
+    threshSlider.setBounds (20, startY, knobSize, knobSize);
+    ceilingSlider.setBounds(100, startY, knobSize, knobSize);
+    relSlider.setBounds(20, startY + gap, knobSize, knobSize);
+    freqSlider.setBounds(100, startY + gap, knobSize, knobSize);  // Move Freq to where Wait was
+    qSlider.setBounds(20, startY + gap*2, knobSize, knobSize);
+    auditionButton.setBounds(20, startY + gap*3, 40, 25);
     startFreqSlider.setBounds (20 + colW, startY, knobSize, knobSize);
     peakFreqSlider.setBounds(100 + colW, startY, knobSize, knobSize);
 

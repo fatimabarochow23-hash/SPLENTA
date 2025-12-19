@@ -32,6 +32,13 @@ public:
                           const juce::Slider::SliderStyle style,
                           juce::Slider& slider) override;
 
+    // Draw transparent button background (for icon-only buttons)
+    void drawButtonBackground(juce::Graphics& g,
+                              juce::Button& button,
+                              const juce::Colour& backgroundColour,
+                              bool shouldDrawButtonAsHighlighted,
+                              bool shouldDrawButtonAsDown) override;
+
     // Get JetBrains Mono font (fallback to monospace if not available)
     juce::Font getMonospaceFont(float height = 14.0f) const;
 

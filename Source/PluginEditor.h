@@ -20,6 +20,7 @@
 #include "ColorControlComponent.h"
 #include "MidiToggleComponent.h"
 #include "VirtualKeyboardComponent.h"
+#include "RetriggerModeSelector.h"
 
 class NewProjectAudioProcessorEditor  : public juce::AudioProcessorEditor,
                                         public juce::Timer
@@ -44,8 +45,8 @@ private:
     using ComboBoxAttachment = juce::AudioProcessorValueTreeState::ComboBoxAttachment;
     using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
 
-    juce::Slider threshSlider, ceilingSlider, relSlider, waitSlider, freqSlider, qSlider;
-    std::unique_ptr<SliderAttachment> threshAtt, ceilingAtt, relAtt, waitAtt, freqAtt, qAtt;
+    juce::Slider threshSlider, ceilingSlider, relSlider, freqSlider, qSlider;
+    std::unique_ptr<SliderAttachment> threshAtt, ceilingAtt, relAtt, freqAtt, qAtt;
 
     juce::Slider startFreqSlider, peakFreqSlider, noiseSlider;
     std::unique_ptr<SliderAttachment> startFreqAtt, peakFreqAtt, noiseAtt;
@@ -62,6 +63,7 @@ private:
     PowerButtonComponent powerButton;  // Bypass control
     ColorControlComponent colorControl;  // Replaces Saturation knob
     MidiToggleComponent midiToggle;  // MIDI Mode & Pitch control
+    RetriggerModeSelector retriggerModeSelector;  // Hard/Soft retrigger mode
 
     // Web-Style Header (Batch 06 Task 3)
     juce::Label logoLabel;

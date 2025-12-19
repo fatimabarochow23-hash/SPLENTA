@@ -138,3 +138,13 @@ juce::Font StealthLookAndFeel::getMonospaceFont(float height) const
     // Final fallback to JUCE's default monospace
     return juce::Font(juce::Font::getDefaultMonospacedFontName(), height, juce::Font::plain);
 }
+
+void StealthLookAndFeel::drawButtonBackground(juce::Graphics& g,
+                                              juce::Button& button,
+                                              const juce::Colour& backgroundColour,
+                                              bool shouldDrawButtonAsHighlighted,
+                                              bool shouldDrawButtonAsDown)
+{
+    // Do nothing - completely transparent button background
+    // Icons will be drawn in PluginEditor::paint() instead
+}

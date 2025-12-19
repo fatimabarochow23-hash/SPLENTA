@@ -27,6 +27,10 @@ public:
     // Trigger effect for particle scatter/gather
     void setTriggerState(bool isTriggered);
 
+    // Bypass and Saturation control (V19.0)
+    void setBypassState(bool isBypassed);
+    void setSaturation(float satValue);  // 0.0f to 100.0f
+
 private:
     void timerCallback() override;
 
@@ -49,6 +53,10 @@ private:
     float time = 0.0f;
     float intensity = 50.0f;     // 0-100
     ThemePalette palette;
+
+    // Bypass and Saturation state (V19.0)
+    bool isBypassed = false;
+    float saturation = 25.0f;    // 0-100 (default from SATURATION parameter)
 
     // Trigger scatter effect
     bool lastTriggerState = false;
@@ -79,6 +87,9 @@ private:
 
     // Helper: Convert accent color to RGBA string equivalent
     juce::Colour getColorWithAlpha(float alpha);
+
+    // Helper: Calculate particle size multiplier based on bypass/SAT state
+    float getParticleSizeMultiplier() const;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EnergyTopologyComponent)
 };

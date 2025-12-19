@@ -28,7 +28,6 @@ NewProjectAudioProcessor::NewProjectAudioProcessor()
     
     freqParam     = apvts->getRawParameterValue("F_FREQ");
     qParam        = apvts->getRawParameterValue("F_Q");
-    waitParam     = apvts->getRawParameterValue("WAIT_MS");
     
     startFreqParam= apvts->getRawParameterValue("START_FREQ");
     peakFreqParam = apvts->getRawParameterValue("PEAK_FREQ");
@@ -56,9 +55,17 @@ NewProjectAudioProcessor::NewProjectAudioProcessor()
     midiModeParam = apvts->getRawParameterValue("MIDI_MODE");
     midiPitchParam= apvts->getRawParameterValue("MIDI_PITCH");
 
-    // Scope Buffer Init
-    scopeBuffer.setSize(1, 2048);
+    // Scope Buffer Init (V19.3 - Extended for long envelope display)
+    // Allocate 1 second @ 48kHz = 48000 samples to support long A_DEC times
+    scopeBuffer.setSize(1, 48000);
     scopeBuffer.clear();
+
+    // Two independent scope buffers for detector/output comparison
+    detectorScopeBuffer.setSize(1, dualScopeBufferSize);
+    outputScopeBuffer.setSize(1, dualScopeBufferSize);
+    detectorScopeBuffer.clear();
+    outputScopeBuffer.clear();
+    dualScopeWritePos = 0;
 
     // Peak Buffer Init
     for (auto& peak : peakBuffer) {
@@ -105,7 +112,6 @@ void NewProjectAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     updateEnvelopeIncrements(*pAttParam, *pDecParam, *aAttParam, *aDecParam, *duckAttParam, *duckDecParam, *colorAttParam, *colorDecParam, *detReleaseParam);
     
     isTriggered = false;
-    retriggerTimer = 0.0f;
     currentPhase = 0.0f;
     detectorEnv = 0.0f;
 
@@ -258,13 +264,14 @@ void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
             currentMax = 0.0f;
         }
 
-        // 2. Trigger (Audio or MIDI)
+        // 2. Retriggerable Trigger (Audio or MIDI)
+        // Release time controls detector decay, naturally preventing false retriggers
         bool shouldTrigger = false;
 
         if (midiMode)
         {
             // MIDI Mode: trigger on MIDI note on
-            if (midiNoteOn && retriggerTimer <= 0.0f)
+            if (midiNoteOn)
             {
                 shouldTrigger = true;
             }
@@ -276,7 +283,7 @@ void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
             float ceilingLin = juce::Decibels::decibelsToGain(ceilingParam->load());
             bool inRange = (detectorEnv > threshLin) && (detectorEnv < ceilingLin || ceilingLin >= 0.99f);
 
-            if (inRange && retriggerTimer <= 0.0f && detectorEnv > threshLin)
+            if (inRange && detectorEnv > threshLin)
             {
                 shouldTrigger = true;
             }
@@ -284,13 +291,34 @@ void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
 
         if (shouldTrigger)
         {
+            // Retriggerable behavior: check mode (Hard vs Soft)
+            bool hardMode = retriggerModeHard.load();
+
+            if (hardMode)
+            {
+                // Hard Retrigger: Immediately reset all envelopes
+                envAmplitude = 0.0f;
+                envPitchValue = 0.0f;
+                envDucking = 0.0f;
+                envColor = 0.0f;
+            }
+            else
+            {
+                // Soft Retrigger: Keep 30% of previous envelope for smooth transition
+                envAmplitude *= 0.3f;
+                envPitchValue *= 0.3f;
+                envDucking *= 0.3f;
+                envColor *= 0.3f;
+            }
+
+            // Restart envelope generators
             isTriggered = true;
-            retriggerTimer = waitParam->load() * (currentSampleRate / 1000.0f);
-            envAmplitude = 0.0f; envPitchValue = 0.0f; envDucking = 0.0f; envColor = 0.0f;
-            pitchState = 0; ampState = 0; duckState = 0; colorState = 0;
+            pitchState = 0;
+            ampState = 0;
+            duckState = 0;
+            colorState = 0;
             currentPhase = 1.5707f;
         }
-        if (retriggerTimer > 0.0f) retriggerTimer -= 1.0f;
         isTriggeredUI = isTriggered;
 
         // 3. Envelopes
@@ -413,6 +441,18 @@ void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
 
                  channelData[sample] = mixed;
 
+                 // === Two-way Scope Capture (V19.3 - Detector vs Output) ===
+                 // Capture independent detector input and final output for comparison
+                 if (ch == 0)
+                 {
+                     int dualPos = dualScopeWritePos.load();
+
+                     detectorScopeBuffer.getWritePointer(0)[dualPos] = tf_out;
+                     outputScopeBuffer.getWritePointer(0)[dualPos] = mixed;
+
+                     dualScopeWritePos = (dualPos + 1) % dualScopeBufferSize;
+                 }
+
                  // === Envelope Peak Aggregation (for EnvelopeView) ===
                  // Only process once per sample (ch == 0)
                  if (ch == 0)
@@ -516,7 +556,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout NewProjectAudioProcessor::cr
     layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("CEILING", 1), "Ceiling", juce::NormalisableRange<float>(-60.0f, 0.0f, 0.1f), 0.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
     layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("DET_REL", 1), "Rel", juce::NormalisableRange<float>(1.0f, 500.0f, 1.0f), 20.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
     layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("DET_SCALE", 1), "Scale", juce::NormalisableRange<float>(50.0f, 400.0f, 1.0f), 100.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
-    layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("WAIT_MS", 1), "Wait", juce::NormalisableRange<float>(10.0f, 1000.0f, 1.0f), 150.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
     layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("F_FREQ", 1), "F.Freq", juce::NormalisableRange<float>(20.0f, 10000.0f, 1.0f, 0.3f), 120.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
     layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("F_Q", 1), "F.Q", juce::NormalisableRange<float>(0.1f, 10.0f, 0.01f), 1.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
     layout.add (std::make_unique<juce::AudioParameterChoice>(juce::ParameterID("AUDITION", 1), "Audition", juce::StringArray("Off", "On"), 0));
