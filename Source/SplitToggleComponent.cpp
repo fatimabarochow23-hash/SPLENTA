@@ -90,7 +90,7 @@ void SplitToggleComponent::paint(juce::Graphics& g)
 
     // Draw rounded border
     g.setColour(juce::Colours::white.withAlpha(0.1f));
-    g.drawRoundedRectangle(bounds.reduced(0.5f), cornerRadius, 1.0f);
+    g.drawRoundedRectangle(bounds.reduced(0.5f), cornerRadius, 1.5f);
 
     // Draw large single letter labels
     g.setFont(juce::FontOptions(28.0f, juce::Font::bold));

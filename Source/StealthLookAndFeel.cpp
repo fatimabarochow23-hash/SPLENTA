@@ -12,6 +12,9 @@ StealthLookAndFeel::StealthLookAndFeel()
     // Initialize with default Bronze palette
     palette = ThemePalette::getPaletteByIndex(0);
 
+    // Find and cache monospace font name ONCE (performance optimization)
+    findAndCacheMonospaceFont();
+
     // Try to set JetBrains Mono as default font
     auto monoFont = getMonospaceFont();
     setDefaultSansSerifTypeface(monoFont.getTypefacePtr());
@@ -114,29 +117,36 @@ void StealthLookAndFeel::drawLinearSlider(juce::Graphics& g,
     g.fillRoundedRectangle(trackX - 2.0f, sliderPos - 1.0f, trackWidth + 4.0f, 2.0f, 1.0f);
 }
 
-juce::Font StealthLookAndFeel::getMonospaceFont(float height) const
+void StealthLookAndFeel::findAndCacheMonospaceFont()
 {
-    // Try to find JetBrains Mono font on the system
+    // This is called ONCE in constructor to avoid repeated font scanning
     juce::StringArray fontNames = juce::Font::findAllTypefaceNames();
 
+    // Try to find JetBrains Mono first
     for (const auto& name : fontNames)
     {
         if (name.containsIgnoreCase("JetBrains") && name.containsIgnoreCase("Mono"))
         {
-            return juce::Font(name, height, juce::Font::plain);
+            cachedMonoFontName = name;
+            return;
         }
     }
 
     // Fallback to system monospace fonts
     if (fontNames.contains("Menlo"))
-        return juce::Font("Menlo", height, juce::Font::plain);
-    if (fontNames.contains("Monaco"))
-        return juce::Font("Monaco", height, juce::Font::plain);
-    if (fontNames.contains("Consolas"))
-        return juce::Font("Consolas", height, juce::Font::plain);
+        cachedMonoFontName = "Menlo";
+    else if (fontNames.contains("Monaco"))
+        cachedMonoFontName = "Monaco";
+    else if (fontNames.contains("Consolas"))
+        cachedMonoFontName = "Consolas";
+    else
+        cachedMonoFontName = juce::Font::getDefaultMonospacedFontName();
+}
 
-    // Final fallback to JUCE's default monospace
-    return juce::Font(juce::Font::getDefaultMonospacedFontName(), height, juce::Font::plain);
+juce::Font StealthLookAndFeel::getMonospaceFont(float height) const
+{
+    // Use cached font name (no expensive font scanning!)
+    return juce::Font(cachedMonoFontName, height, juce::Font::plain);
 }
 
 void StealthLookAndFeel::drawButtonBackground(juce::Graphics& g,
@@ -147,4 +157,114 @@ void StealthLookAndFeel::drawButtonBackground(juce::Graphics& g,
 {
     // Do nothing - completely transparent button background
     // Icons will be drawn in PluginEditor::paint() instead
+}
+
+void StealthLookAndFeel::drawPopupMenuBackground(juce::Graphics& g, int width, int height)
+{
+    // Industrial dark background with subtle transparency
+    g.fillAll(juce::Colour(0xFF0A0A0A).withAlpha(0.98f));
+
+    // Outer border (theme accent, subtle)
+    g.setColour(palette.accent.withAlpha(0.3f));
+    g.drawRect(0, 0, width, height, 1);
+
+    // Inner border (darker, for depth)
+    g.setColour(juce::Colours::black.withAlpha(0.5f));
+    g.drawRect(1, 1, width - 2, height - 2, 1);
+
+    // Corner accent marks (L-shaped decorations, industrial style)
+    g.setColour(palette.accent.withAlpha(0.4f));
+    const int cornerLen = 6;
+
+    // Top-left
+    g.drawLine(2, 2, 2 + cornerLen, 2, 1.0f);
+    g.drawLine(2, 2, 2, 2 + cornerLen, 1.0f);
+
+    // Top-right
+    g.drawLine(width - 2 - cornerLen, 2, width - 2, 2, 1.0f);
+    g.drawLine(width - 2, 2, width - 2, 2 + cornerLen, 1.0f);
+
+    // Bottom-left
+    g.drawLine(2, height - 2 - cornerLen, 2, height - 2, 1.0f);
+    g.drawLine(2, height - 2, 2 + cornerLen, height - 2, 1.0f);
+
+    // Bottom-right
+    g.drawLine(width - 2, height - 2 - cornerLen, width - 2, height - 2, 1.0f);
+    g.drawLine(width - 2 - cornerLen, height - 2, width - 2, height - 2, 1.0f);
+}
+
+void StealthLookAndFeel::drawPopupMenuItem(juce::Graphics& g, const juce::Rectangle<int>& area,
+                                           bool isSeparator, bool isActive,
+                                           bool isHighlighted, bool isTicked, bool hasSubMenu,
+                                           const juce::String& text, const juce::String& shortcutKeyText,
+                                           const juce::Drawable* icon, const juce::Colour* textColour)
+{
+    if (isSeparator)
+    {
+        // Draw separator line (theme accent, subtle)
+        auto r = area.reduced(10, 0);
+        g.setColour(palette.accent.withAlpha(0.2f));
+        g.drawLine(r.getX(), r.getCentreY(), r.getRight(), r.getCentreY(), 1.0f);
+    }
+    else
+    {
+        // Check if this is a section header (detect by all-caps or specific pattern)
+        bool isSectionHeader = (text == text.toUpperCase() && text.length() < 15);
+
+        if (isSectionHeader)
+        {
+            // Section Header Styling
+            g.setColour(palette.accent);
+            g.setFont(getMonospaceFont(10.0f).boldened());
+            g.drawText(text, area.reduced(12, 0), juce::Justification::centredLeft);
+        }
+        else
+        {
+            // Regular Menu Item
+            auto r = area.reduced(8, 0);
+
+            // Highlight background when hovered
+            if (isHighlighted && isActive)
+            {
+                g.setColour(palette.accent.withAlpha(0.15f));
+                g.fillRect(area);
+
+                // Left accent bar when highlighted
+                g.setColour(palette.accent);
+                g.fillRect(area.getX(), area.getY(), 2, area.getHeight());
+            }
+
+            // Text color
+            juce::Colour itemTextColour = juce::Colours::white.withAlpha(isActive ? 0.85f : 0.4f);
+            if (isHighlighted && isActive)
+                itemTextColour = palette.accent.brighter(0.3f);
+
+            g.setColour(itemTextColour);
+            g.setFont(getMonospaceFont(12.0f));
+
+            // Draw text with left padding
+            auto textArea = r.withTrimmedLeft(8);
+            g.drawText(text, textArea, juce::Justification::centredLeft);
+
+            // Draw shortcut key (if any) on the right
+            if (shortcutKeyText.isNotEmpty())
+            {
+                g.setFont(getMonospaceFont(10.0f));
+                g.setColour(palette.accent.withAlpha(0.5f));
+                g.drawText(shortcutKeyText, r.reduced(4, 0), juce::Justification::centredRight);
+            }
+
+            // Tick mark for selected items (optional, rarely used in SPLENTA)
+            if (isTicked)
+            {
+                g.setColour(palette.accent);
+                g.fillEllipse(r.getX() + 4, r.getCentreY() - 2, 4, 4);
+            }
+        }
+    }
+}
+
+juce::Font StealthLookAndFeel::getPopupMenuFont()
+{
+    return getMonospaceFont(12.0f);
 }

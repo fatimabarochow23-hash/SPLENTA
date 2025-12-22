@@ -110,7 +110,19 @@ void NewProjectAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     atomicSampleRate.store(sampleRate);  // Store atomic sample rate
     updateFilterCoefficients(*freqParam, *qParam);
     updateEnvelopeIncrements(*pAttParam, *pDecParam, *aAttParam, *aDecParam, *duckAttParam, *duckDecParam, *colorAttParam, *colorDecParam, *detReleaseParam);
-    
+
+    // Reset all internal state
+    resetInternalState();
+
+    agmGain.reset(sampleRate, 0.05);
+    agmGain.setCurrentAndTargetValue(1.0f);
+}
+
+void NewProjectAudioProcessor::releaseResources() {}
+
+void NewProjectAudioProcessor::resetInternalState()
+{
+    // Reset trigger and synthesis state
     isTriggered = false;
     currentPhase = 0.0f;
     detectorEnv = 0.0f;
@@ -119,11 +131,11 @@ void NewProjectAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     envAmplitude = 0.0f;
     envPitchValue = 0.0f;
     envDucking = 0.0f;
-    envColor = 0.0f;  // COLOR envelope reset
+    envColor = 0.0f;
     pitchState = 0;
     ampState = 0;
     duckState = 0;
-    colorState = 0;   // COLOR state reset
+    colorState = 0;
 
     // Reset Peak Detection
     peakSampleCounter = 0;
@@ -136,15 +148,50 @@ void NewProjectAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     peakSynthesizer = 0.0f;
     peakOutput = 0.0f;
 
+    // Reset filter state
     f_x1 = 0.0f; f_x2 = 0.0f; f_y1 = 0.0f; f_y2 = 0.0f;
     dry_hp_x1[0] = 0.0f; dry_hp_y1[0] = 0.0f;
     dry_hp_x1[1] = 0.0f; dry_hp_y1[1] = 0.0f;
-    
-    agmGain.reset(sampleRate, 0.05);
-    agmGain.setCurrentAndTargetValue(1.0f);
+
+    // Reset MIDI state
+    midiNoteOn = false;
+    currentMidiNote = -1;
+    currentMidiVelocity = 0.0f;
+
+    // Reset AGM gain (preserves sample rate)
+    if (currentSampleRate > 0)
+    {
+        agmGain.reset(currentSampleRate, 0.05);
+        agmGain.setCurrentAndTargetValue(1.0f);
+    }
 }
 
-void NewProjectAudioProcessor::releaseResources() {}
+void NewProjectAudioProcessor::clearScopeBuffers()
+{
+    // Clear legacy scope buffer
+    scopeBuffer.clear();
+    scopeWritePos = 0;
+
+    // Clear dual scope buffers (detector and output)
+    detectorScopeBuffer.clear();
+    outputScopeBuffer.clear();
+    dualScopeWritePos = 0;
+
+    // Clear peak buffer
+    for (auto& peak : peakBuffer) {
+        peak.minValue = 0.0f;
+        peak.maxValue = 0.0f;
+    }
+    peakWritePos = 0;
+
+    // Clear envelope buffer
+    for (auto& point : envelopeBuffer) {
+        point.detector = 0.0f;
+        point.synthesizer = 0.0f;
+        point.output = 0.0f;
+    }
+    envelopeFifo.reset();
+}
 
 #ifndef JucePlugin_PreferredChannelConfigurations
 bool NewProjectAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -179,12 +226,22 @@ void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
     float currentInputRMS = buffer.getRMSLevel(0, 0, numSamples);
     inputRMS = currentInputRMS;
 
+    // Check for shuffle/reset request (thread-safe)
+    if (shouldShuffle.exchange(false))  // Atomically read and reset flag
+    {
+        resetInternalState();
+        clearScopeBuffers();
+    }
+
     // Sync MIDI messages to keyboardState (for virtual keyboard visualization)
     keyboardState.processNextMidiBuffer(midiMessages, 0, numSamples, true);
 
     // Process MIDI messages
     bool midiMode = midiModeParam->load() > 0.5f;
     bool midiPitchControl = midiPitchParam->load() > 0.5f;
+
+    // MIDI edge detection flag (trigger only once per buffer on note-on transition)
+    bool midiTriggerThisBuffer = false;
 
     for (const auto metadata : midiMessages)
     {
@@ -194,6 +251,13 @@ void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
         {
             currentMidiNote = message.getNoteNumber();
             currentMidiVelocity = message.getVelocity() / 127.0f;
+
+            // Detect note-on edge (transition from off to on)
+            if (!midiNoteOn)
+            {
+                midiTriggerThisBuffer = true;  // Mark that we should trigger this buffer
+            }
+
             midiNoteOn = true;
         }
         else if (message.isNoteOff())
@@ -270,8 +334,9 @@ void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
 
         if (midiMode)
         {
-            // MIDI Mode: trigger on MIDI note on
-            if (midiNoteOn)
+            // MIDI Mode: trigger ONLY on first sample if we received a note-on edge this buffer
+            // This prevents retriggering every sample while holding a key
+            if (midiTriggerThisBuffer && sample == 0)
             {
                 shouldTrigger = true;
             }
@@ -349,18 +414,41 @@ void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
         float currentFreq;
         if (midiMode && midiPitchControl && currentMidiNote >= 0)
         {
-            // MIDI Pitch Mode: use MIDI note number to calculate frequency
+            // MIDI Pitch Mode: Fixed pitch per key (no envelope modulation)
             // MIDI note 69 = A4 = 440Hz
-            float baseFreq = 440.0f * std::pow(2.0f, (currentMidiNote - 69) / 12.0f);
+            // Each key triggers a fixed frequency, like 808/909 drum machine
+            currentFreq = 440.0f * std::pow(2.0f, (currentMidiNote - 69) / 12.0f);
 
-            // Apply pitch envelope as a frequency modulation (±1 octave range)
-            float pitchModSemitones = (envPitchValue - 0.5f) * 24.0f;  // -12 to +12 semitones
-            currentFreq = baseFreq * std::pow(2.0f, pitchModSemitones / 12.0f);
+            // Update UI display variables (only once per buffer)
+            if (sample == 0)
+            {
+                lastMidiNoteUI.store(currentMidiNote);
+                lastFrequencyUI.store(currentFreq);
+            }
+        }
+        else if (midiMode && !midiPitchControl)
+        {
+            // MIDI Trigger Mode: All keys trigger same sound (use START/PEAK with envelope)
+            currentFreq = startFreq + (peakFreq - startFreq) * envPitchValue;
+
+            // Update UI display
+            if (sample == 0)
+            {
+                lastMidiNoteUI.store(currentMidiNote);
+                lastFrequencyUI.store(currentFreq);
+            }
         }
         else
         {
-            // Parameter Mode: use START_FREQ and PEAK_FREQ with envelope
+            // Audio Mode: use START_FREQ and PEAK_FREQ with envelope (sweep effect)
             currentFreq = startFreq + (peakFreq - startFreq) * envPitchValue;
+
+            // Clear MIDI display in audio mode
+            if (sample == 0)
+            {
+                lastMidiNoteUI.store(-1);
+                lastFrequencyUI.store(0.0f);
+            }
         }
 
         currentPhase += (currentFreq / (float)currentSampleRate) * juce::MathConstants<float>::twoPi;
@@ -396,20 +484,15 @@ void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
 
         float finalWet = oscFinal * envAmplitude * juce::Decibels::decibelsToGain(wetParam->load());
 
-        // 5. Spectral Ducking
+        // 5. Spectral Ducking (only when triggered)
         float duckDB = duckParam->load();
         float duckAmount = 1.0f - juce::Decibels::decibelsToGain(duckDB);
         float currentDuckGain = 1.0f - (envDucking * duckAmount);
 
-        float dryHPFreq = 20.0f + (envDucking * 300.0f);
-        float hp_w0 = 2.0f * juce::MathConstants<float>::pi * dryHPFreq / (float)currentSampleRate;
-        float hp_x = std::exp(-hp_w0);
-        float hp_a1 = hp_x;
-        float hp_b0 = 0.5f * (1.0f + hp_x);
-        float hp_b1 = -hp_b0;
-
         float mixPct = mixParam->load() / 100.0f;
+        float dryMixPct = dryParam->load() / 100.0f;
         bool useSoftClip = clipParam->load() > 0.5f;
+        bool isBypassed = bypassParam->load() > 0.5f;
 
         // 6. Output
         for (int ch = 0; ch < totalNumOutputChannels; ++ch)
@@ -423,14 +506,35 @@ void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
              {
                  channelData[sample] = tf_out;
              }
+             else if (isBypassed)
+             {
+                 // Bypass: pass through original signal unchanged
+                 channelData[sample] = drySig;
+             }
              else
              {
-                 float filteredDry = hp_b0 * drySig + hp_b1 * dry_hp_x1[ch] + hp_a1 * dry_hp_y1[ch];
-                 dry_hp_x1[ch] = drySig;
-                 dry_hp_y1[ch] = filteredDry;
+                 float processedDry = drySig;
+
+                 // Apply high-pass filter only when triggered (to prevent low-freq buildup during ducking)
+                 if (isTriggered && envDucking > 0.01f)
+                 {
+                     float dryHPFreq = 20.0f + (envDucking * 300.0f);
+                     float hp_w0 = 2.0f * juce::MathConstants<float>::pi * dryHPFreq / (float)currentSampleRate;
+                     float hp_x = std::exp(-hp_w0);
+                     float hp_a1 = hp_x;
+                     float hp_b0 = 0.5f * (1.0f + hp_x);
+                     float hp_b1 = -hp_b0;
+
+                     processedDry = hp_b0 * drySig + hp_b1 * dry_hp_x1[ch] + hp_a1 * dry_hp_y1[ch];
+                     dry_hp_x1[ch] = drySig;
+                     dry_hp_y1[ch] = processedDry;
+                 }
+
+                 // Apply ducking gain and dry mix
+                 float finalDry = processedDry * currentDuckGain * dryMixPct;
 
                  // Additive Mix: DuckedDry + Wet * Mix
-                 float mixed = (filteredDry * currentDuckGain) + (finalWet * mixPct);
+                 float mixed = finalDry + (finalWet * mixPct);
 
                  // Hard limiting at -0.01dB instead of soft clipping
                  const float hardLimitThreshold = juce::Decibels::decibelsToGain(-0.01f);
@@ -552,7 +656,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout NewProjectAudioProcessor::cr
 {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
     // Detector
-    layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("THRESHOLD", 1), "Thresh", juce::NormalisableRange<float>(-60.0f, 0.0f, 0.1f), -20.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
+    layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("THRESHOLD", 1), "Thresh", juce::NormalisableRange<float>(-60.0f, 0.0f, 0.1f), -30.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
     layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("CEILING", 1), "Ceiling", juce::NormalisableRange<float>(-60.0f, 0.0f, 0.1f), 0.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
     layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("DET_REL", 1), "Rel", juce::NormalisableRange<float>(1.0f, 500.0f, 1.0f), 20.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
     layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("DET_SCALE", 1), "Scale", juce::NormalisableRange<float>(50.0f, 400.0f, 1.0f), 100.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
@@ -565,20 +669,20 @@ juce::AudioProcessorValueTreeState::ParameterLayout NewProjectAudioProcessor::cr
     layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("PEAK_FREQ", 1), "Peak", juce::NormalisableRange<float>(20.0f, 1000.0f, 1.0f, 0.4f), 80.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
     layout.add (std::make_unique<juce::AudioParameterChoice>(juce::ParameterID("SHAPE", 1), "Shape", juce::StringArray("Sine", "Triangle", "Square"), 0));
     layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("COLOR_AMOUNT", 1), "Color", juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 40.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
-    layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("COLOR_ATT", 1), "C.Att", juce::NormalisableRange<float>(0.0f, 50.0f, 0.1f), 5.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
-    layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("COLOR_DEC", 1), "C.Dec", juce::NormalisableRange<float>(10.0f, 500.0f, 1.0f), 150.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
-    layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("NOISE_MIX", 1), "Noise", juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 20.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
-    
+    layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("COLOR_ATT", 1), "C.Att", juce::NormalisableRange<float>(0.0f, 100.0f, 0.1f), 5.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
+    layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("COLOR_DEC", 1), "C.Dec", juce::NormalisableRange<float>(0.0f, 500.0f, 1.0f), 150.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
+    layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("NOISE_MIX", 1), "Noise", juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 0.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
+
     // Envelope
-    layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("P_ATT", 1), "P.Att", juce::NormalisableRange<float>(0.0f, 100.0f, 0.1f), 10.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
-    layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("P_DEC", 1), "P.Dec", juce::NormalisableRange<float>(10.0f, 2000.0f, 1.0f), 150.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
-    layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("A_ATT", 1), "A.Att", juce::NormalisableRange<float>(0.0f, 50.0f, 0.1f), 2.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
-    layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("A_DEC", 1), "A.Dec", juce::NormalisableRange<float>(10.0f, 2000.0f, 1.0f), 400.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
-    
+    layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("P_ATT", 1), "P.Att", juce::NormalisableRange<float>(0.0f, 200.0f, 0.1f), 10.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
+    layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("P_DEC", 1), "P.Dec", juce::NormalisableRange<float>(0.0f, 2000.0f, 1.0f), 150.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
+    layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("A_ATT", 1), "A.Att", juce::NormalisableRange<float>(0.0f, 100.0f, 0.1f), 2.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
+    layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("A_DEC", 1), "A.Dec", juce::NormalisableRange<float>(0.0f, 2000.0f, 1.0f), 100.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
+
     // Output
     layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("DUCKING", 1), "Duck dB", juce::NormalisableRange<float>(-48.0f, 0.0f, 0.1f), -12.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
-    layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("D_ATT", 1), "D.Att", juce::NormalisableRange<float>(0.0f, 50.0f, 0.1f), 2.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
-    layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("D_DEC", 1), "D.Dec", juce::NormalisableRange<float>(10.0f, 2000.0f, 1.0f), 300.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
+    layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("D_ATT", 1), "D.Att", juce::NormalisableRange<float>(0.0f, 100.0f, 0.1f), 2.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
+    layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("D_DEC", 1), "D.Dec", juce::NormalisableRange<float>(0.0f, 2000.0f, 1.0f), 300.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
     layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("WET_GAIN", 1), "Wet dB", juce::NormalisableRange<float>(-24.0f, 12.0f, 0.1f), -6.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
     layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("DRY_MIX", 1), "Dry %", juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 100.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
     layout.add (std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("MIX", 1), "Mix %", juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 50.0f, "", juce::AudioProcessorParameter::genericParameter, nullptr, nullptr));
@@ -607,16 +711,188 @@ void NewProjectAudioProcessor::loadPreset(int presetIndex)
 {
     switch (presetIndex)
     {
-        case 1:
-            setParameterValue("START_FREQ", 60.0f); setParameterValue("PEAK_FREQ", 120.0f);
-            setParameterValue("P_DEC", 20.0f); setParameterValue("NOISE_MIX", 0.0f); break;
-        case 2:
-            setParameterValue("START_FREQ", 200.0f); setParameterValue("PEAK_FREQ", 450.0f); break;
-        case 3:
-            setParameterValue("START_FREQ", 50.0f); setParameterValue("PEAK_FREQ", 800.0f); break;
-        case 4:
-            setParameterValue("START_FREQ", 40.0f); setParameterValue("PEAK_FREQ", 60.0f);
-            setParameterValue("SHAPE", 2.0f); setParameterValue("COLOR_AMOUNT", 80.0f); break;
+        // ========== REALISTIC (1-5) ==========
+        case 1: // Gunshot - Fast, high-pitched, sharp attack
+            setParameterValue("START_FREQ", 400.0f);
+            setParameterValue("PEAK_FREQ", 180.0f);  // Downward pitch
+            setParameterValue("P_ATT", 0.5f);
+            setParameterValue("P_DEC", 15.0f);  // Very fast pitch decay
+            setParameterValue("A_ATT", 0.2f);
+            setParameterValue("A_DEC", 60.0f);
+            setParameterValue("SHAPE", 0.0f);  // Sine
+            setParameterValue("COLOR_AMOUNT", 60.0f);
+            setParameterValue("NOISE_MIX", 0.0f);
+            break;
+
+        case 2: // Cannon - Ultra-low frequency, explosive
+            setParameterValue("START_FREQ", 80.0f);
+            setParameterValue("PEAK_FREQ", 35.0f);
+            setParameterValue("P_ATT", 1.0f);
+            setParameterValue("P_DEC", 40.0f);
+            setParameterValue("A_ATT", 0.5f);
+            setParameterValue("A_DEC", 180.0f);
+            setParameterValue("SHAPE", 0.0f);  // Sine
+            setParameterValue("COLOR_AMOUNT", 80.0f);  // Heavy harmonics
+            setParameterValue("NOISE_MIX", 0.0f);
+            break;
+
+        case 3: // Footstep - Low, short, clean
+            setParameterValue("START_FREQ", 120.0f);
+            setParameterValue("PEAK_FREQ", 65.0f);
+            setParameterValue("P_ATT", 2.0f);
+            setParameterValue("P_DEC", 25.0f);
+            setParameterValue("A_ATT", 1.0f);
+            setParameterValue("A_DEC", 50.0f);  // Short decay
+            setParameterValue("SHAPE", 0.0f);  // Sine
+            setParameterValue("COLOR_AMOUNT", 20.0f);  // Clean
+            setParameterValue("NOISE_MIX", 0.0f);
+            break;
+
+        case 4: // Door Slam - Mid-low, punchy
+            setParameterValue("START_FREQ", 200.0f);
+            setParameterValue("PEAK_FREQ", 90.0f);
+            setParameterValue("P_ATT", 1.5f);
+            setParameterValue("P_DEC", 35.0f);
+            setParameterValue("A_ATT", 0.8f);
+            setParameterValue("A_DEC", 120.0f);
+            setParameterValue("SHAPE", 1.0f);  // Triangle for punch
+            setParameterValue("COLOR_AMOUNT", 40.0f);
+            setParameterValue("NOISE_MIX", 0.0f);
+            break;
+
+        case 5: // Thunder - Ultra-low, long rumble
+            setParameterValue("START_FREQ", 50.0f);
+            setParameterValue("PEAK_FREQ", 28.0f);
+            setParameterValue("P_ATT", 8.0f);
+            setParameterValue("P_DEC", 250.0f);  // Long rumble
+            setParameterValue("A_ATT", 5.0f);
+            setParameterValue("A_DEC", 400.0f);  // Extended decay
+            setParameterValue("SHAPE", 0.0f);  // Sine
+            setParameterValue("COLOR_AMOUNT", 30.0f);
+            setParameterValue("NOISE_MIX", 0.0f);
+            break;
+
+        // ========== SCI-FI (6-10) ==========
+        case 6: // Laser - High-frequency sweep, ultra-fast
+            setParameterValue("START_FREQ", 800.0f);
+            setParameterValue("PEAK_FREQ", 350.0f);
+            setParameterValue("P_ATT", 0.3f);
+            setParameterValue("P_DEC", 8.0f);  // Super fast
+            setParameterValue("A_ATT", 0.2f);
+            setParameterValue("A_DEC", 25.0f);
+            setParameterValue("SHAPE", 0.0f);  // Sine for clean laser
+            setParameterValue("COLOR_AMOUNT", 70.0f);
+            setParameterValue("NOISE_MIX", 0.0f);
+            break;
+
+        case 7: // Pulse - Square wave, short, robotic
+            setParameterValue("START_FREQ", 300.0f);
+            setParameterValue("PEAK_FREQ", 300.0f);  // No pitch change
+            setParameterValue("P_ATT", 0.0f);
+            setParameterValue("P_DEC", 0.0f);
+            setParameterValue("A_ATT", 0.5f);
+            setParameterValue("A_DEC", 40.0f);
+            setParameterValue("SHAPE", 2.0f);  // Square wave
+            setParameterValue("COLOR_AMOUNT", 50.0f);
+            setParameterValue("NOISE_MIX", 0.0f);
+            break;
+
+        case 8: // Energy Shield - Long attack, harmonic-rich
+            setParameterValue("START_FREQ", 180.0f);
+            setParameterValue("PEAK_FREQ", 240.0f);  // Upward sweep
+            setParameterValue("P_ATT", 15.0f);  // Slow charge-up
+            setParameterValue("P_DEC", 80.0f);
+            setParameterValue("A_ATT", 12.0f);
+            setParameterValue("A_DEC", 150.0f);
+            setParameterValue("SHAPE", 1.0f);  // Triangle
+            setParameterValue("COLOR_AMOUNT", 85.0f);  // Very harmonic
+            setParameterValue("NOISE_MIX", 0.0f);
+            break;
+
+        case 9: // Portal - Frequency scan, sci-fi character
+            setParameterValue("START_FREQ", 120.0f);
+            setParameterValue("PEAK_FREQ", 420.0f);  // Wide sweep
+            setParameterValue("P_ATT", 25.0f);  // Slow sweep
+            setParameterValue("P_DEC", 180.0f);
+            setParameterValue("A_ATT", 20.0f);
+            setParameterValue("A_DEC", 250.0f);
+            setParameterValue("SHAPE", 0.0f);  // Sine
+            setParameterValue("COLOR_AMOUNT", 65.0f);
+            setParameterValue("NOISE_MIX", 0.0f);
+            break;
+
+        case 10: // Drone - Low-frequency, sustained, eerie
+            setParameterValue("START_FREQ", 85.0f);
+            setParameterValue("PEAK_FREQ", 85.0f);  // Constant pitch
+            setParameterValue("P_ATT", 0.0f);
+            setParameterValue("P_DEC", 0.0f);
+            setParameterValue("A_ATT", 40.0f);  // Very slow attack
+            setParameterValue("A_DEC", 600.0f);  // Very long sustain
+            setParameterValue("SHAPE", 1.0f);  // Triangle
+            setParameterValue("COLOR_AMOUNT", 45.0f);
+            setParameterValue("NOISE_MIX", 0.0f);
+            break;
+
+        // ========== MUSIC (11-15) ==========
+        case 11: // 808 Kick - Classic hip-hop low-end
+            setParameterValue("START_FREQ", 65.0f);
+            setParameterValue("PEAK_FREQ", 45.0f);
+            setParameterValue("P_ATT", 1.0f);
+            setParameterValue("P_DEC", 120.0f);  // Classic 808 pitch tail
+            setParameterValue("A_ATT", 0.5f);
+            setParameterValue("A_DEC", 180.0f);
+            setParameterValue("SHAPE", 0.0f);  // Sine for pure sub
+            setParameterValue("COLOR_AMOUNT", 25.0f);  // Subtle harmonics
+            setParameterValue("NOISE_MIX", 0.0f);
+            break;
+
+        case 12: // Sub Drop - Ultra-low frequency dive
+            setParameterValue("START_FREQ", 38.0f);
+            setParameterValue("PEAK_FREQ", 22.0f);
+            setParameterValue("P_ATT", 5.0f);
+            setParameterValue("P_DEC", 600.0f);  // Long pitch dive
+            setParameterValue("A_ATT", 3.0f);
+            setParameterValue("A_DEC", 800.0f);  // Extended tail
+            setParameterValue("SHAPE", 0.0f);  // Pure sine
+            setParameterValue("COLOR_AMOUNT", 15.0f);  // Very clean
+            setParameterValue("NOISE_MIX", 0.0f);
+            break;
+
+        case 13: // Boom Bap - 90s hip-hop punch
+            setParameterValue("START_FREQ", 140.0f);
+            setParameterValue("PEAK_FREQ", 75.0f);
+            setParameterValue("P_ATT", 2.0f);
+            setParameterValue("P_DEC", 80.0f);
+            setParameterValue("A_ATT", 1.0f);
+            setParameterValue("A_DEC", 150.0f);
+            setParameterValue("SHAPE", 1.0f);  // Triangle for punch
+            setParameterValue("COLOR_AMOUNT", 55.0f);
+            setParameterValue("NOISE_MIX", 0.0f);
+            break;
+
+        case 14: // Deep House - Sustained sub bass
+            setParameterValue("START_FREQ", 60.0f);
+            setParameterValue("PEAK_FREQ", 60.0f);  // No pitch change
+            setParameterValue("P_ATT", 0.0f);
+            setParameterValue("P_DEC", 0.0f);
+            setParameterValue("A_ATT", 8.0f);  // Slow swell
+            setParameterValue("A_DEC", 400.0f);  // Long tail
+            setParameterValue("SHAPE", 0.0f);  // Pure sine
+            setParameterValue("COLOR_AMOUNT", 10.0f);  // Very clean
+            setParameterValue("NOISE_MIX", 0.0f);
+            break;
+
+        case 15: // Trap 808 - Modern trap sub with slide
+            setParameterValue("START_FREQ", 52.0f);
+            setParameterValue("PEAK_FREQ", 35.0f);
+            setParameterValue("P_ATT", 3.0f);
+            setParameterValue("P_DEC", 320.0f);  // Sliding pitch
+            setParameterValue("A_ATT", 1.0f);
+            setParameterValue("A_DEC", 500.0f);  // Long sustain
+            setParameterValue("SHAPE", 0.0f);  // Sine
+            setParameterValue("COLOR_AMOUNT", 35.0f);  // Moderate warmth
+            setParameterValue("NOISE_MIX", 0.0f);
+            break;
     }
 }
 

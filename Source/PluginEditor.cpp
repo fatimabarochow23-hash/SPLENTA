@@ -1,6 +1,6 @@
 /*
   ==============================================================================
-    PluginEditor.cpp (SPLENTA V19.3 - 20251219.01)
+    PluginEditor.cpp (SPLENTA V19.4 - 20251223.01)
     MIDI Mode Complete: Virtual Keyboard + External MIDI Support
   ==============================================================================
 */
@@ -11,7 +11,7 @@
 
 NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor (NewProjectAudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p), envelopeView(p),
-      waveformSelector(*p.apvts), splitToggle(*p.apvts), powerButton(*p.apvts), colorControl(*p.apvts), midiToggle(*p.apvts), retriggerModeSelector(p)
+      waveformSelector(*p.apvts), splitToggle(*p.apvts), powerButton(*p.apvts), colorControl(*p.apvts), midiToggle(*p.apvts), retriggerModeSelector(p), shuffleButton()
 {
     // Custom components (Batch 06) - Add BEFORE sliders to ensure on top
     addAndMakeVisible(waveformSelector);
@@ -26,6 +26,14 @@ NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor (NewProjectAudioP
     midiToggle.setAlwaysOnTop(true);
     addAndMakeVisible(retriggerModeSelector);
     retriggerModeSelector.setAlwaysOnTop(true);
+    addAndMakeVisible(shuffleButton);
+    shuffleButton.setAlwaysOnTop(true);
+
+    // Shuffle button callback - reset internal state AND clear oscilloscope buffers
+    shuffleButton.onShuffle = [this]() {
+        audioProcessor.requestShuffle();  // Thread-safe request to audio thread
+        envelopeView.clearDisplay();      // Clear UI display immediately
+    };
 
     setupKnob(threshSlider, "THRESHOLD", threshAtt, " dB");
     setupKnob(ceilingSlider,"CEILING",   ceilingAtt," dB");
@@ -92,15 +100,32 @@ NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor (NewProjectAudioP
     loadButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white.withAlpha(0.6f));
     loadButton.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
     loadButton.onClick = [this] {
-        // Create popup menu with presets
+        // Create popup menu with 15 presets across 3 categories
         juce::PopupMenu menu;
-        menu.addSectionHeader("Realistic");
+        menu.setLookAndFeel(&stealthLnF);  // Apply custom industrial theme styling
+
+        menu.addSectionHeader("REALISTIC");  // All-caps for section headers
         menu.addItem(1, "Gunshot");
-        menu.addItem(2, "Sword");
+        menu.addItem(2, "Cannon");
+        menu.addItem(3, "Footstep");
+        menu.addItem(4, "Door Slam");
+        menu.addItem(5, "Thunder");
+
         menu.addSeparator();
-        menu.addSectionHeader("Sci-Fi");
-        menu.addItem(3, "Laser");
-        menu.addItem(4, "Pulse");
+        menu.addSectionHeader("SCI-FI");
+        menu.addItem(6, "Laser");
+        menu.addItem(7, "Pulse");
+        menu.addItem(8, "Energy Shield");
+        menu.addItem(9, "Portal");
+        menu.addItem(10, "Drone");
+
+        menu.addSeparator();
+        menu.addSectionHeader("MUSIC");
+        menu.addItem(11, "808 Kick");
+        menu.addItem(12, "Sub Drop");
+        menu.addItem(13, "Boom Bap");
+        menu.addItem(14, "Deep House");
+        menu.addItem(15, "Trap 808");
 
         menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&loadButton),
                            [this](int result) {
@@ -110,9 +135,20 @@ NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor (NewProjectAudioP
                                    juce::String presetName;
                                    switch(result) {
                                        case 1: presetName = "Gunshot"; break;
-                                       case 2: presetName = "Sword"; break;
-                                       case 3: presetName = "Laser"; break;
-                                       case 4: presetName = "Pulse"; break;
+                                       case 2: presetName = "Cannon"; break;
+                                       case 3: presetName = "Footstep"; break;
+                                       case 4: presetName = "Door Slam"; break;
+                                       case 5: presetName = "Thunder"; break;
+                                       case 6: presetName = "Laser"; break;
+                                       case 7: presetName = "Pulse"; break;
+                                       case 8: presetName = "Energy Shield"; break;
+                                       case 9: presetName = "Portal"; break;
+                                       case 10: presetName = "Drone"; break;
+                                       case 11: presetName = "808 Kick"; break;
+                                       case 12: presetName = "Sub Drop"; break;
+                                       case 13: presetName = "Boom Bap"; break;
+                                       case 14: presetName = "Deep House"; break;
+                                       case 15: presetName = "Trap 808"; break;
                                    }
                                    presetNameLabel.setText(presetName, juce::dontSendNotification);
                                }
@@ -127,10 +163,17 @@ NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor (NewProjectAudioP
     addChildComponent(*virtualKeyboard);  // addChildComponent = hidden by default
     virtualKeyboard->setAlwaysOnTop(true);
 
-    // MIDI Toggle callback - show/hide keyboard
+    // MIDI Toggle callback - show/hide keyboard AND enable MIDI mode
     midiToggle.onMidiModeChanged = [this](bool enabled) {
         showKeyboard = enabled;
         virtualKeyboard->setVisible(showKeyboard);
+
+        // Automatically enable/disable MIDI_MODE parameter when toggling keyboard
+        if (auto* midiParam = dynamic_cast<juce::AudioParameterChoice*>(audioProcessor.apvts->getParameter("MIDI_MODE")))
+        {
+            midiParam->setValueNotifyingHost(enabled ? 1.0f : 0.0f);
+        }
+
         if (showKeyboard)
         {
             setSize(960, 720);  // Expand height for keyboard
@@ -201,6 +244,7 @@ void NewProjectAudioProcessorEditor::updateColors()
     midiToggle.setPalette(palette);  // MIDI toggle theme update
     retriggerModeSelector.setPalette(palette);  // Retrigger mode selector theme update
     virtualKeyboard->setPalette(palette);  // Virtual keyboard theme update
+    shuffleButton.setPalette(palette);  // Shuffle button theme update
 
     // Apply colors to sliders (use accent with alpha from map for text box color)
     auto apply = [&](juce::Slider& s) {
@@ -501,6 +545,174 @@ void NewProjectAudioProcessorEditor::paint (juce::Graphics& g)
     g.drawText(scaleText, scaleControlArea, juce::Justification::centred);
 
     // Footer branding removed (per user request - causes lag even with static white colors)
+
+    // MIDI Digital Display (left of MIDI toggle button)
+    int midiNote = audioProcessor.lastMidiNoteUI.load();
+    float midiFreq = audioProcessor.lastFrequencyUI.load();
+
+    if (midiNote >= 0)
+    {
+        // Position: left of MIDI toggle (which is at x=926, y=596)
+        // OUTPUT label is at x=700, so position at x=820 to avoid overlap
+        // Display width ~100px, leaves safe space before MIDI toggle at x=926
+        drawMidiDisplay(g, 820, 598, midiNote, midiFreq, c_accent);
+    }
+}
+
+void NewProjectAudioProcessorEditor::drawDigitalNumber(juce::Graphics& g, int x, int y, int digit, float scale, juce::Colour baseColor)
+{
+    // Seven-segment display layout (standard calculator/watch style)
+    // Segments numbered:
+    //     0
+    //   1   2
+    //     3
+    //   4   5
+    //     6
+
+    const float segLength = 8.0f * scale;   // Horizontal segment length
+    const float segWidth = 1.5f * scale;    // Segment thickness
+    const float segGap = 1.0f * scale;      // Gap between segments
+
+    // Define which segments light up for each digit (0-9)
+    const bool segmentMap[10][7] = {
+        {true, true, true, false, true, true, true},      // 0
+        {false, false, true, false, false, true, false},  // 1
+        {true, false, true, true, true, false, true},     // 2
+        {true, false, true, true, false, true, true},     // 3
+        {false, true, true, true, false, true, false},    // 4
+        {true, true, false, true, false, true, true},     // 5
+        {true, true, false, true, true, true, true},      // 6
+        {true, false, true, false, false, true, false},   // 7
+        {true, true, true, true, true, true, true},       // 8
+        {true, true, true, true, false, true, false}      // 9 (修复：底部段应该关闭)
+    };
+
+    if (digit < 0 || digit > 9) return;
+
+    // Create gradient (darker at bottom, brighter at top)
+    juce::ColourGradient gradient(
+        baseColor.darker(0.3f), x + segLength * 0.5f, y + segLength * 2.0f + segGap * 3.0f,
+        baseColor.brighter(0.4f), x + segLength * 0.5f, y,
+        false
+    );
+
+    auto drawHorizontalSegment = [&](float sx, float sy, bool active) {
+        if (!active) return;
+
+        juce::Path seg;
+        seg.startNewSubPath(sx + segWidth, sy);
+        seg.lineTo(sx + segLength - segWidth, sy);
+        seg.lineTo(sx + segLength, sy + segWidth * 0.5f);
+        seg.lineTo(sx + segLength - segWidth, sy + segWidth);
+        seg.lineTo(sx + segWidth, sy + segWidth);
+        seg.lineTo(sx, sy + segWidth * 0.5f);
+        seg.closeSubPath();
+
+        // Glow effect
+        juce::DropShadow glow(baseColor.withAlpha(0.8f), 4, juce::Point<int>(0, 0));
+        glow.drawForPath(g, seg);
+
+        // Fill with gradient
+        g.setGradientFill(gradient);
+        g.fillPath(seg);
+    };
+
+    auto drawVerticalSegment = [&](float sx, float sy, bool active) {
+        if (!active) return;
+
+        juce::Path seg;
+        seg.startNewSubPath(sx, sy + segWidth);
+        seg.lineTo(sx + segWidth * 0.5f, sy);
+        seg.lineTo(sx + segWidth, sy + segWidth);
+        seg.lineTo(sx + segWidth, sy + segLength - segWidth);
+        seg.lineTo(sx + segWidth * 0.5f, sy + segLength);
+        seg.lineTo(sx, sy + segLength - segWidth);
+        seg.closeSubPath();
+
+        // Glow effect
+        juce::DropShadow glow(baseColor.withAlpha(0.8f), 4, juce::Point<int>(0, 0));
+        glow.drawForPath(g, seg);
+
+        // Fill with gradient
+        g.setGradientFill(gradient);
+        g.fillPath(seg);
+    };
+
+    // Draw segments based on digit
+    const bool* segments = segmentMap[digit];
+
+    // Segment 0 (top)
+    drawHorizontalSegment(x, y, segments[0]);
+
+    // Segment 1 (top-left)
+    drawVerticalSegment(x, y + segGap, segments[1]);
+
+    // Segment 2 (top-right)
+    drawVerticalSegment(x + segLength - segWidth, y + segGap, segments[2]);
+
+    // Segment 3 (middle)
+    drawHorizontalSegment(x, y + segLength + segGap, segments[3]);
+
+    // Segment 4 (bottom-left)
+    drawVerticalSegment(x, y + segLength + segGap * 2, segments[4]);
+
+    // Segment 5 (bottom-right)
+    drawVerticalSegment(x + segLength - segWidth, y + segLength + segGap * 2, segments[5]);
+
+    // Segment 6 (bottom)
+    drawHorizontalSegment(x, y + segLength * 2.0f + segGap * 2.0f, segments[6]);
+}
+
+void NewProjectAudioProcessorEditor::drawMidiDisplay(juce::Graphics& g, int x, int y, int midiNote, float frequency, juce::Colour accentColor)
+{
+    // Convert MIDI note to note name (C, C#, D, etc.) and octave
+    const char* noteNames[] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
+    int noteIndex = midiNote % 12;
+    int octave = (midiNote / 12) - 1;
+
+    juce::String noteName = juce::String(noteNames[noteIndex]) + juce::String(octave);
+    juce::String freqText = juce::String((int)frequency) + "Hz";
+
+    // Layout: Note name in text, then frequency in seven-segment digits
+    const float scale = 0.9f;  // Reduced scale for compact display
+    const float digitSpacing = 9.0f * scale;  // Adjusted spacing (was 7.0f)
+
+    // Draw note name with glow (e.g., "C4")
+    g.setColour(accentColor.darker(0.2f));
+    g.setFont(juce::FontOptions(13.5f * scale, juce::Font::bold));  // Adjusted font size (was 12.0f)
+
+    // Glow for note name
+    juce::DropShadow textGlow(accentColor.withAlpha(0.6f), 3, juce::Point<int>(0, 0));
+    juce::GlyphArrangement glyphs;
+    glyphs.addLineOfText(g.getCurrentFont(), noteName, x, y + 12.0f * scale);
+
+    for (int i = 0; i < glyphs.getNumGlyphs(); ++i)
+    {
+        juce::Path p;
+        glyphs.getGlyph(i).createPath(p);
+        textGlow.drawForPath(g, p);
+    }
+
+    g.setColour(accentColor);
+    g.drawText(noteName, x, y, 35, 16, juce::Justification::centredLeft);  // Smaller text area
+
+    // Draw frequency in seven-segment display
+    int freqInt = (int)frequency;
+    int xPos = x + 38;  // Offset after note name (reduced from 45)
+
+    // Extract individual digits
+    juce::String freqDigits = juce::String(freqInt);
+    for (int i = 0; i < freqDigits.length(); ++i)
+    {
+        int digit = freqDigits[i] - '0';
+        drawDigitalNumber(g, xPos, y + 2, digit, scale, accentColor);  // Offset Y slightly
+        xPos += digitSpacing;
+    }
+
+    // Draw "Hz" suffix
+    g.setColour(accentColor.withAlpha(0.7f));
+    g.setFont(juce::FontOptions(8.0f * scale, juce::Font::plain));  // Smaller Hz label
+    g.drawText("Hz", xPos + 2, y + 8, 25, 12, juce::Justification::centredLeft);
 }
 
 void NewProjectAudioProcessorEditor::mouseDown(const juce::MouseEvent& event)
@@ -581,10 +793,11 @@ void NewProjectAudioProcessorEditor::resized()
         scaleTextHeight
     );
 
-    // Web-Style Header (top bar) - SAVE/LOAD right of TOPOLOGY
+    // Web-Style Header (top bar) - Compact shuffle button between SAVE and LOAD
     saveButton.setBounds(650, 5, 60, 24);
-    loadButton.setBounds(720, 5, 60, 24);
-    themeSelector.setBounds(790, 5, 110, 24);
+    shuffleButton.setBounds(715, 5, 30, 24);  // Compact 30px width, between save and load
+    loadButton.setBounds(750, 5, 60, 24);
+    themeSelector.setBounds(820, 5, 110, 24);
 
     // Preset Name Label - positioned INSIDE INPUT DETECTOR panel header (green box left)
     // Place in the center-right of INPUT DETECTOR header area

@@ -1,6 +1,6 @@
 /*
   ==============================================================================
-    RetriggerModeSelector.h (SPLENTA V19.3 - 20251219.03)
+    RetriggerModeSelector.h (SPLENTA V19.4 - 20251223.03)
     Hard/Soft Retrigger Mode Selector (Sliding Toggle)
   ==============================================================================
 */

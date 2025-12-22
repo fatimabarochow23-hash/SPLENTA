@@ -1,6 +1,6 @@
 /*
   ==============================================================================
-    EnvelopeView.h (SPLENTA V19.3 - 20251219.02)
+    EnvelopeView.h (SPLENTA V19.4 - 20251223.02)
     Frozen Trigger Waveform Display (ShaperBox 3 Style)
   ==============================================================================
 */
@@ -45,6 +45,9 @@ public:
 
     // Dynamic theme color integration
     void setThemeColors(juce::Colour accent, juce::Colour panel);
+
+    // Clear waveform display (for shuffle/reset)
+    void clearDisplay();
 
 private:
     NewProjectAudioProcessor& processor;

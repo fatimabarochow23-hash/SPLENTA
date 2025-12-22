@@ -1,6 +1,6 @@
 /*
   ==============================================================================
-    MidiToggleComponent.cpp (SPLENTA V19.3 - 20251219.01)
+    MidiToggleComponent.cpp (SPLENTA V19.4 - 20251223.01)
     Minimalist Piano Keyboard Icon Button - MIDI Mode Toggle
   ==============================================================================
 */
@@ -62,6 +62,7 @@ void MidiToggleComponent::drawPianoKeyboardIcon(juce::Graphics& g, juce::Rectang
 void MidiToggleComponent::paint(juce::Graphics& g)
 {
     midiMode = apvts.getRawParameterValue("MIDI_MODE")->load() > 0.5f;
+    bool midiPitch = apvts.getRawParameterValue("MIDI_PITCH")->load() > 0.5f;
 
     auto bounds = getLocalBounds();
 
@@ -82,6 +83,26 @@ void MidiToggleComponent::paint(juce::Graphics& g)
         g.setColour(palette.accent.withAlpha(0.2f));
         g.drawRect(bounds.toFloat().reduced(-1), 1.0f);
     }
+
+    // Draw "P" indicator in top-right corner (Pitch mode indicator)
+    // Only show when MIDI is active
+    if (midiMode)
+    {
+        juce::Colour pColor = midiPitch ? palette.accent.brighter(0.5f) : juce::Colours::white.withAlpha(0.3f);
+        g.setColour(pColor);
+        g.setFont(juce::FontOptions(10.0f, juce::Font::bold));
+
+        // Draw small circle background for visibility
+        float dotSize = 10.0f;
+        float dotX = bounds.getRight() - dotSize - 2;
+        float dotY = bounds.getY() + 2;
+
+        g.setColour(juce::Colours::black.withAlpha(0.5f));
+        g.fillEllipse(dotX, dotY, dotSize, dotSize);
+
+        g.setColour(pColor);
+        g.drawText("P", dotX, dotY, dotSize, dotSize, juce::Justification::centred);
+    }
 }
 
 void MidiToggleComponent::resized()
@@ -91,15 +112,27 @@ void MidiToggleComponent::resized()
 
 void MidiToggleComponent::mouseDown(const juce::MouseEvent& event)
 {
-    // Toggle MIDI mode
-    if (auto* param = dynamic_cast<juce::AudioParameterChoice*>(apvts.getParameter("MIDI_MODE")))
+    if (event.mods.isRightButtonDown() || event.mods.isShiftDown())
     {
-        bool newState = !midiMode;
-        param->setValueNotifyingHost(newState ? 1.0f : 0.0f);
+        // Right-click or Shift+Click: Toggle MIDI Pitch mode
+        if (auto* pitchParam = dynamic_cast<juce::AudioParameterChoice*>(apvts.getParameter("MIDI_PITCH")))
+        {
+            bool currentPitch = apvts.getRawParameterValue("MIDI_PITCH")->load() > 0.5f;
+            pitchParam->setValueNotifyingHost(currentPitch ? 0.0f : 1.0f);
+        }
+    }
+    else
+    {
+        // Left-click: Toggle MIDI mode
+        if (auto* param = dynamic_cast<juce::AudioParameterChoice*>(apvts.getParameter("MIDI_MODE")))
+        {
+            bool newState = !midiMode;
+            param->setValueNotifyingHost(newState ? 1.0f : 0.0f);
 
-        // Trigger callback
-        if (onMidiModeChanged)
-            onMidiModeChanged(newState);
+            // Trigger callback
+            if (onMidiModeChanged)
+                onMidiModeChanged(newState);
+        }
     }
     repaint();
 }

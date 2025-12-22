@@ -1,6 +1,6 @@
 /*
   ==============================================================================
-    RetriggerModeSelector.cpp (SPLENTA V19.3 - 20251219.03)
+    RetriggerModeSelector.cpp (SPLENTA V19.4 - 20251223.03)
     Hard/Soft Retrigger Mode Selector (Sliding Toggle)
   ==============================================================================
 */
@@ -77,7 +77,7 @@ void RetriggerModeSelector::paint(juce::Graphics& g)
 
     // Indicator border (brighter)
     g.setColour(colors[currentIndex].withAlpha(0.6f));
-    g.drawRoundedRectangle(indicatorBounds.reduced(2.0f), 4.0f, 2.0f);
+    g.drawRoundedRectangle(indicatorBounds.reduced(2.0f), 4.0f, 1.5f);
 
     // Draw both mode icons (Hard and Soft)
     for (int i = 0; i < 2; ++i)

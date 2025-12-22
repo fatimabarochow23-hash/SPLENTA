@@ -1,6 +1,6 @@
 /*
   ==============================================================================
-    VirtualKeyboardComponent.h (SPLENTA V19.3 - 20251219.01)
+    VirtualKeyboardComponent.h (SPLENTA V19.4 - 20251223.01)
     Virtual MIDI Keyboard with Theme Support + External MIDI Sync
   ==============================================================================
 */

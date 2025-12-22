@@ -1,6 +1,6 @@
 /*
   ==============================================================================
-    PluginEditor.h (SPLENTA V19.3 - 20251219.01)
+    PluginEditor.h (SPLENTA V19.4 - 20251223.01)
     MIDI Mode Complete: Virtual Keyboard + External MIDI Support
   ==============================================================================
 */
@@ -21,6 +21,7 @@
 #include "MidiToggleComponent.h"
 #include "VirtualKeyboardComponent.h"
 #include "RetriggerModeSelector.h"
+#include "ShuffleButtonComponent.h"
 
 class NewProjectAudioProcessorEditor  : public juce::AudioProcessorEditor,
                                         public juce::Timer
@@ -64,6 +65,7 @@ private:
     ColorControlComponent colorControl;  // Replaces Saturation knob
     MidiToggleComponent midiToggle;  // MIDI Mode & Pitch control
     RetriggerModeSelector retriggerModeSelector;  // Hard/Soft retrigger mode
+    ShuffleButtonComponent shuffleButton;  // Reset/Shuffle function
 
     // Web-Style Header (Batch 06 Task 3)
     juce::Label logoLabel;
@@ -91,6 +93,8 @@ private:
     void drawPanel(juce::Graphics& g, juce::Rectangle<int> bounds, const juce::String& title, bool isActive);
     void drawSaveIcon(juce::Graphics& g, int x, int y, int scale, juce::Colour c);
     void drawLoadIcon(juce::Graphics& g, int x, int y, int scale, juce::Colour c);
+    void drawDigitalNumber(juce::Graphics& g, int x, int y, int digit, float scale, juce::Colour baseColor);
+    void drawMidiDisplay(juce::Graphics& g, int x, int y, int midiNote, float frequency, juce::Colour accentColor);
 
     // Panel layout areas
     juce::Rectangle<int> detectorPanel, enforcerPanel, topologyPanel, outputPanel;

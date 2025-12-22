@@ -42,9 +42,24 @@ public:
     // Get JetBrains Mono font (fallback to monospace if not available)
     juce::Font getMonospaceFont(float height = 14.0f) const;
 
+    // Custom PopupMenu styling (SPLENTA industrial theme)
+    void drawPopupMenuBackground(juce::Graphics& g, int width, int height) override;
+
+    void drawPopupMenuItem(juce::Graphics& g, const juce::Rectangle<int>& area,
+                           bool isSeparator, bool isActive,
+                           bool isHighlighted, bool isTicked, bool hasSubMenu,
+                           const juce::String& text, const juce::String& shortcutKeyText,
+                           const juce::Drawable* icon, const juce::Colour* textColour) override;
+
+    juce::Font getPopupMenuFont() override;
+
 private:
     ThemePalette palette;
 
     // Default inactive dot color
     const juce::Colour inactiveDotColor = juce::Colour(168, 162, 158); // #a8a29e
+
+    // Cached font name for performance (initialized once in constructor)
+    juce::String cachedMonoFontName;
+    void findAndCacheMonospaceFont();
 };

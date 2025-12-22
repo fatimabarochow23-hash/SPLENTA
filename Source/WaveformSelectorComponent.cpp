@@ -81,7 +81,7 @@ void WaveformSelectorComponent::paint(juce::Graphics& g)
 
     // Indicator border (brighter)
     g.setColour(colors[selectedIndex].withAlpha(0.6f));
-    g.drawRoundedRectangle(indicatorBounds.reduced(2.0f), 4.0f, 2.0f);
+    g.drawRoundedRectangle(indicatorBounds.reduced(2.0f), 4.0f, 1.5f);
 
     // Draw all three waveform icons
     for (int i = 0; i < 3; ++i)

@@ -75,7 +75,7 @@ void ColorControlComponent::paint(juce::Graphics& g)
 
     // 边框（微妙高光）
     g.setColour(juce::Colours::white.withAlpha(0.08f));
-    g.drawRoundedRectangle(bounds.toFloat().reduced(1.0f), 4.0f, 1.0f);
+    g.drawRoundedRectangle(bounds.toFloat().reduced(1.0f), 4.0f, 1.5f);
 
     // 旋钮区域
     auto knobArea = bounds.removeFromLeft(70).reduced(5);

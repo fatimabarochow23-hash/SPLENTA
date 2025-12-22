@@ -45,9 +45,22 @@ public:
 
     std::unique_ptr<juce::AudioProcessorValueTreeState> apvts;
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
-    
+
     void loadPreset(int presetIndex);
     void setParameterValue(const juce::String& paramID, float value);
+
+    // Reset internal state (clear envelopes, phase, AGM, etc.) without changing parameters
+    void resetInternalState();
+
+    // Clear oscilloscope buffers (for shuffle/reset function)
+    void clearScopeBuffers();
+
+    // Request shuffle/reset from UI thread (thread-safe)
+    void requestShuffle() { shouldShuffle.store(true); }
+
+    // MIDI Debug Display (for UI)
+    std::atomic<int> lastMidiNoteUI { -1 };
+    std::atomic<float> lastFrequencyUI { 0.0f };
 
     // --- UI Shared Data (Public) ---
     // V19.3 两路独立示波器缓冲 (Detector/Output)
@@ -83,6 +96,9 @@ public:
 
     // Retrigger mode for UI (Hard vs Soft retrigger)
     std::atomic<bool> retriggerModeHard { true };  // true=Hard, false=Soft
+
+    // Shuffle/reset request flag (thread-safe communication from UI to audio thread)
+    std::atomic<bool> shouldShuffle { false };
 
     // MIDI Keyboard State (for virtual keyboard visualization)
     juce::MidiKeyboardState keyboardState;

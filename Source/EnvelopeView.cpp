@@ -1,6 +1,6 @@
 /*
   ==============================================================================
-    EnvelopeView.cpp (SPLENTA V19.3 - 20251219.02)
+    EnvelopeView.cpp (SPLENTA V19.4 - 20251223.02)
     Frozen Trigger Waveform Display (ShaperBox 3 Style)
   ==============================================================================
 */
@@ -426,6 +426,24 @@ void EnvelopeView::setThemeColors(juce::Colour accent, juce::Colour panel)
     thresholdColour = juce::Colours::white;            // White threshold line
     triggerHighlight = accent.withAlpha(0.15f);        // Subtle highlight
     backgroundColour = panel.darker(0.8f);             // Dark background
+
+    repaint();
+}
+
+void EnvelopeView::clearDisplay()
+{
+    // Clear frozen waveform
+    for (auto& point : frozenWaveform)
+    {
+        point.detectorInput = 0.0f;
+        point.synthOutput = 0.0f;
+        point.finalOutput = 0.0f;
+    }
+
+    // Reset state
+    hasValidSnapshot = false;
+    isScrolling = false;
+    lastTriggerState = false;
 
     repaint();
 }
