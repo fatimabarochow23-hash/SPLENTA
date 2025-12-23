@@ -22,6 +22,7 @@
 #include "VirtualKeyboardComponent.h"
 #include "RetriggerModeSelector.h"
 #include "ShuffleButtonComponent.h"
+#include "ABCompareComponent.h"
 
 class NewProjectAudioProcessorEditor  : public juce::AudioProcessorEditor,
                                         public juce::Timer
@@ -66,6 +67,7 @@ private:
     MidiToggleComponent midiToggle;  // MIDI Mode & Pitch control
     RetriggerModeSelector retriggerModeSelector;  // Hard/Soft retrigger mode
     ShuffleButtonComponent shuffleButton;  // Reset/Shuffle function
+    ABCompareComponent abCompareComponent;  // A/B comparison system
 
     // Web-Style Header (Batch 06 Task 3)
     juce::Label logoLabel;

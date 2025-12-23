@@ -11,7 +11,7 @@
 
 NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor (NewProjectAudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p), envelopeView(p),
-      waveformSelector(*p.apvts), splitToggle(*p.apvts), powerButton(*p.apvts), colorControl(*p.apvts), midiToggle(*p.apvts), retriggerModeSelector(p), shuffleButton()
+      waveformSelector(*p.apvts), splitToggle(*p.apvts), powerButton(*p.apvts), colorControl(*p.apvts), midiToggle(*p.apvts), retriggerModeSelector(p), shuffleButton(), abCompareComponent(p)
 {
     // Custom components (Batch 06) - Add BEFORE sliders to ensure on top
     addAndMakeVisible(waveformSelector);
@@ -28,6 +28,8 @@ NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor (NewProjectAudioP
     retriggerModeSelector.setAlwaysOnTop(true);
     addAndMakeVisible(shuffleButton);
     shuffleButton.setAlwaysOnTop(true);
+    addAndMakeVisible(abCompareComponent);
+    abCompareComponent.setAlwaysOnTop(true);
 
     // Shuffle button callback - reset internal state AND clear oscilloscope buffers
     shuffleButton.onShuffle = [this]() {
@@ -245,6 +247,7 @@ void NewProjectAudioProcessorEditor::updateColors()
     retriggerModeSelector.setPalette(palette);  // Retrigger mode selector theme update
     virtualKeyboard->setPalette(palette);  // Virtual keyboard theme update
     shuffleButton.setPalette(palette);  // Shuffle button theme update
+    abCompareComponent.setPalette(palette);  // A/B compare theme update
 
     // Apply colors to sliders (use accent with alpha from map for text box color)
     auto apply = [&](juce::Slider& s) {
@@ -798,6 +801,11 @@ void NewProjectAudioProcessorEditor::resized()
     shuffleButton.setBounds(715, 5, 30, 24);  // Compact 30px width, between save and load
     loadButton.setBounds(750, 5, 60, 24);
     themeSelector.setBounds(820, 5, 110, 24);
+
+    // A/B Compare buttons - top bar center (between preset name and save button)
+    // Layout: [A 20px] [gap 4px] [Pyramid 24px] [gap 4px] [B 20px] = 72px total
+    // Position: shifted left to avoid overlapping ENERGY TOPOLOGY text
+    abCompareComponent.setBounds(420, 5, 72, 24);
 
     // Preset Name Label - positioned INSIDE INPUT DETECTOR panel header (green box left)
     // Place in the center-right of INPUT DETECTOR header area

@@ -896,6 +896,107 @@ void NewProjectAudioProcessor::loadPreset(int presetIndex)
     }
 }
 
+// ========== A/B Compare System ==========
+
+juce::StringArray NewProjectAudioProcessor::getAllParameterIDs()
+{
+    juce::StringArray paramIDs;
+    for (auto* param : apvts->processor.getParameters())
+    {
+        if (auto* paramWithID = dynamic_cast<juce::AudioProcessorParameterWithID*>(param))
+        {
+            paramIDs.add(paramWithID->paramID);
+        }
+    }
+    return paramIDs;
+}
+
+void NewProjectAudioProcessor::saveCurrentParametersToSnapshot(ParameterSnapshot& snapshot)
+{
+    snapshot.values.clear();
+
+    auto paramIDs = getAllParameterIDs();
+    for (const auto& paramID : paramIDs)
+    {
+        if (auto* param = apvts->getParameter(paramID))
+        {
+            snapshot.values[paramID] = param->getValue();  // Store normalized value (0.0-1.0)
+        }
+    }
+}
+
+void NewProjectAudioProcessor::loadParametersFromSnapshot(const ParameterSnapshot& snapshot)
+{
+    for (const auto& pair : snapshot.values)
+    {
+        const juce::String& paramID = pair.first;
+        float normalizedValue = pair.second;
+
+        if (auto* param = apvts->getParameter(paramID))
+        {
+            param->setValueNotifyingHost(normalizedValue);
+        }
+    }
+}
+
+void NewProjectAudioProcessor::switchToStateA()
+{
+    if (!isCurrentlyStateA)
+    {
+        // Save current state (B) before switching
+        saveCurrentParametersToSnapshot(snapshotB);
+    }
+
+    // Load state A
+    if (!snapshotA.values.empty())
+    {
+        loadParametersFromSnapshot(snapshotA);
+    }
+
+    isCurrentlyStateA = true;
+}
+
+void NewProjectAudioProcessor::switchToStateB()
+{
+    if (isCurrentlyStateA)
+    {
+        // Save current state (A) before switching
+        saveCurrentParametersToSnapshot(snapshotA);
+    }
+
+    // Load state B
+    if (!snapshotB.values.empty())
+    {
+        loadParametersFromSnapshot(snapshotB);
+    }
+
+    isCurrentlyStateA = false;
+}
+
+void NewProjectAudioProcessor::copyAtoB()
+{
+    // Save current parameters to A first (in case we're in A state and haven't switched yet)
+    if (isCurrentlyStateA)
+    {
+        saveCurrentParametersToSnapshot(snapshotA);
+    }
+
+    // Copy snapshot A to snapshot B
+    snapshotB = snapshotA;
+}
+
+void NewProjectAudioProcessor::copyBtoA()
+{
+    // Save current parameters to B first (in case we're in B state and haven't switched yet)
+    if (!isCurrentlyStateA)
+    {
+        saveCurrentParametersToSnapshot(snapshotB);
+    }
+
+    // Copy snapshot B to snapshot A
+    snapshotA = snapshotB;
+}
+
 void NewProjectAudioProcessor::updateFilterCoefficients(float freq, float Q) {
     if (currentSampleRate <= 0) return;
     float w0 = 2.0f * juce::MathConstants<float>::pi * freq / (float)currentSampleRate;

@@ -58,6 +58,12 @@ public:
     // Request shuffle/reset from UI thread (thread-safe)
     void requestShuffle() { shouldShuffle.store(true); }
 
+    // A/B Compare System
+    void switchToStateA();
+    void switchToStateB();
+    void copyAtoB();
+    void copyBtoA();
+
     // MIDI Debug Display (for UI)
     std::atomic<int> lastMidiNoteUI { -1 };
     std::atomic<float> lastFrequencyUI { 0.0f };
@@ -205,6 +211,20 @@ private:
 
     void updateFilterCoefficients(float freq, float Q);
     void updateEnvelopeIncrements(float pAtt, float pDec, float aAtt, float aDec, float dAtt, float dDec, float cAtt, float cDec, float detRel);
+
+    // A/B Compare - Parameter Storage
+    struct ParameterSnapshot
+    {
+        std::map<juce::String, float> values;
+    };
+
+    ParameterSnapshot snapshotA;
+    ParameterSnapshot snapshotB;
+    bool isCurrentlyStateA = true;
+
+    void saveCurrentParametersToSnapshot(ParameterSnapshot& snapshot);
+    void loadParametersFromSnapshot(const ParameterSnapshot& snapshot);
+    juce::StringArray getAllParameterIDs();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (NewProjectAudioProcessor)
 };
