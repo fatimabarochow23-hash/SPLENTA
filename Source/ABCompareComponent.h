@@ -1,6 +1,6 @@
 /*
   ==============================================================================
-    ABCompareComponent.h (SPLENTA V19.4 - 20251223.03)
+    ABCompareComponent.h (SPLENTA V19.5 - 20251223.01)
     A/B Compare - Top Bar Style with Pyramid Transfer Button
   ==============================================================================
 */

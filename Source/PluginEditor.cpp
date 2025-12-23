@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    PluginEditor.cpp (SPLENTA V19.4 - 20251223.01)
-    MIDI Mode Complete: Virtual Keyboard + External MIDI Support
+    PluginEditor.cpp (SPLENTA V19.5 - 20251223.01)
+    A/B Compare with 3D Pyramid Animation
   ==============================================================================
 */
 
