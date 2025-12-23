@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    ABCompareComponent.cpp (SPLENTA V19.5 - 20251223.01)
-    A/B Compare - Top Bar Style with Pyramid Transfer Button
+    ABCompareComponent.cpp (SPLENTA V19.5 - 20251223.02)
+    A/B Compare - Rainbow Color Cycling Pyramid Animation
   ==============================================================================
 */
 
@@ -189,6 +189,25 @@ void ABCompareComponent::timerCallback()
         }
     }
 
+    // Update animation color based on rotation progress (cycle through 5 theme colors)
+    // 720° total rotation, divide into 5 segments (144° each)
+    float progress = std::abs(rotationAngle) / 720.0f;  // 0.0 to 1.0
+    int colorIndex;
+
+    if (isClockwise)
+    {
+        // Left-click: Bronze → Blue → Purple → Green → Pink
+        colorIndex = static_cast<int>(progress * 5.0f) % 5;
+    }
+    else
+    {
+        // Right-click: Pink → Green → Purple → Blue → Bronze (reverse)
+        colorIndex = 4 - (static_cast<int>(progress * 5.0f) % 5);
+    }
+
+    // Get color from theme palette (using accent color)
+    animationColor = ThemePalette::getPaletteByIndex(colorIndex).accent;
+
     repaint();
 }
 
@@ -265,19 +284,19 @@ void ABCompareComponent::mouseDown(const juce::MouseEvent& event)
     {
         if (isRightClick)
         {
-            // Right-click: B → A (counter-clockwise, purple color)
+            // Right-click: B → A (counter-clockwise, color cycle: Pink → Green → Purple → Blue → Bronze)
             audioProcessor.copyBtoA();
             isClockwise = false;
             targetRotation = -720.0f;
-            animationColor = juce::Colour(0xff, 0x66, 0xff);  // Purple/magenta
+            animationColor = ThemePalette::getPaletteByIndex(4).accent;  // Start with Pink
         }
         else
         {
-            // Left-click: A → B (clockwise, cyan color)
+            // Left-click: A → B (clockwise, color cycle: Bronze → Blue → Purple → Green → Pink)
             audioProcessor.copyAtoB();
             isClockwise = true;
             targetRotation = 720.0f;
-            animationColor = juce::Colour(0x00, 0xff, 0xff);  // Cyan
+            animationColor = ThemePalette::getPaletteByIndex(0).accent;  // Start with Bronze
         }
 
         // Start animation

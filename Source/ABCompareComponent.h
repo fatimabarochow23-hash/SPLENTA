@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    ABCompareComponent.h (SPLENTA V19.5 - 20251223.01)
-    A/B Compare - Top Bar Style with Pyramid Transfer Button
+    ABCompareComponent.h (SPLENTA V19.5 - 20251223.02)
+    A/B Compare - Rainbow Color Cycling Pyramid Animation
   ==============================================================================
 */
 
