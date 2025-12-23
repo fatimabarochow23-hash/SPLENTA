@@ -46,14 +46,14 @@ fi
 
 # Build with xcodebuild
 echo "  → Compiling Release configuration..."
-xcodebuild -project NewProject.xcodeproj \
+xcodebuild -project SPLENTA.xcodeproj \
     -configuration Release \
     -scheme "SPLENTA - VST3" \
     -jobs $(sysctl -n hw.ncpu) \
     clean build \
     CODE_SIGN_IDENTITY="$IDENTITY" \
     DEVELOPMENT_TEAM="$TEAM_ID" \
-    | xcpretty || xcodebuild -project NewProject.xcodeproj \
+    | xcpretty 2>/dev/null || xcodebuild -project SPLENTA.xcodeproj \
         -configuration Release \
         -scheme "SPLENTA - VST3" \
         clean build \

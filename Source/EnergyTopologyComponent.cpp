@@ -1,7 +1,7 @@
 /*
   ==============================================================================
-    EnergyTopologyComponent.cpp (SPLENTA V19.0 - 20251218.01)
-    Energy Topology: Radial Gradient Glow Optimization
+    EnergyTopologyComponent.cpp (SPLENTA V19.5 - 20251224.01)
+    Energy Topology: Wormhole + Figure-8 Lemniscate Implementation
   ==============================================================================
 */
 
