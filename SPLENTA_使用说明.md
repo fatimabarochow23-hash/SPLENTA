@@ -1,5 +1,5 @@
 # SPLENTA 使用说明书
-**版本：V19.5**
+**版本：V1.0.0**
 **类型：瞬态合成器 (Transient Synthesizer)**
 **格式：VST3 (macOS)**
 
