@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>SPLENTA_使用说明</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="pdf-style.css" />
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#splenta-使用说明书" id="toc-splenta-使用说明书">SPLENTA
+使用说明书</a>
+<ul>
+<li><a href="#目录" id="toc-目录">目录</a></li>
+<li><a href="#产品简介" id="toc-产品简介">产品简介</a></li>
+<li><a href="#快速开始" id="toc-快速开始">快速开始</a></li>
+<li><a href="#界面概览" id="toc-界面概览">界面概览</a></li>
+<li><a href="#控件详解" id="toc-控件详解">控件详解</a></li>
+<li><a href="#预设系统" id="toc-预设系统">预设系统</a></li>
+<li><a href="#ab比较功能" id="toc-ab比较功能">AB比较功能</a></li>
+<li><a href="#midi模式" id="toc-midi模式">MIDI模式</a></li>
+<li><a href="#使用技巧" id="toc-使用技巧">使用技巧</a></li>
+<li><a href="#常见问题" id="toc-常见问题">常见问题</a></li>
+<li><a href="#系统要求" id="toc-系统要求">系统要求</a></li>
+<li><a href="#技术支持" id="toc-技术支持">技术支持</a></li>
+<li><a href="#更新日志" id="toc-更新日志">更新日志</a></li>
+<li><a href="#附录参数速查表"
+id="toc-附录参数速查表">附录：参数速查表</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="splenta-使用说明书">SPLENTA 使用说明书</h1>
+<p><strong>版本：V1.0.0</strong> <strong>类型：瞬态合成器 (Transient
+Synthesizer)</strong> <strong>格式：VST3 (macOS)</strong></p>
+<hr />
+<h2 id="目录">目录</h2>
+<ol type="1">
+<li><a href="#产品简介">产品简介</a></li>
+<li><a href="#快速开始">快速开始</a></li>
+<li><a href="#界面概览">界面概览</a></li>
+<li><a href="#控件详解">控件详解</a></li>
+<li><a href="#预设系统">预设系统</a></li>
+<li><a href="#ab比较功能">AB比较功能</a></li>
+<li><a href="#midi模式">MIDI模式</a></li>
+<li><a href="#使用技巧">使用技巧</a></li>
+</ol>
+<hr />
+<h2 id="产品简介">产品简介</h2>
+<p>SPLENTA
+是一款专业的<strong>瞬态合成器</strong>插件，用于创建打击乐、音效和低频增强效果。通过分析输入音频的瞬态信号，SPLENTA
+可以生成同步的合成音色，并与原始信号混合，为你的音乐制作添加力量感和冲击力。</p>
+<h3 id="核心特性">核心特性</h3>
+<ul>
+<li>🎯
+<strong>瞬态检测器</strong>：智能分析输入信号的瞬态，自动触发合成器</li>
+<li>🎹 <strong>MIDI模式</strong>：支持虚拟键盘和外部MIDI控制器演奏</li>
+<li>🎨
+<strong>5种主题配色</strong>：Bronze（青铜）、Silver（银色）、Gold（金色）、Platinum（白金）、Diamond（钻石）</li>
+<li>🔊 <strong>双层合成引擎</strong>：音高包络 +
+振幅包络，精确控制音色形状</li>
+<li>🎚️ <strong>COLOR饱和度</strong>：模拟电路般的温暖失真效果</li>
+<li>🔀
+<strong>Split分离模式</strong>：同时输出原始信号和合成信号到不同通道</li>
+<li>🔄 <strong>AB比较</strong>：快速对比两组参数设置</li>
+</ul>
+<hr />
+<h2 id="快速开始">快速开始</h2>
+<h3 id="安装">安装</h3>
+<ol type="1">
+<li>双击 <code>.dmg</code> 文件打开安装包</li>
+<li>将 <code>SPLENTA.vst3</code> 拖拽到
+<code>/Library/Audio/Plug-Ins/VST3/</code> 文件夹</li>
+<li>重启你的DAW（Logic Pro、FL Studio、Ableton Live等）</li>
+<li>在插件列表中找到 <code>SPLENTA</code></li>
+</ol>
+<h3 id="第一次使用">第一次使用</h3>
+<ol type="1">
+<li><strong>加载预设</strong>：点击顶部栏的文件夹图标，选择一个预设（推荐：“808
+Kick”）</li>
+<li><strong>播放音频</strong>：在DAW中播放含有瞬态的音频轨道（如鼓组、打击乐）</li>
+<li><strong>调整Mix</strong>：使用右侧的 <code>MIX</code>
+旋钮混合合成音色</li>
+<li><strong>监听效果</strong>：点击耳机图标（Audition）可以单独监听合成音色</li>
+</ol>
+<hr />
+<h2 id="界面概览">界面概览</h2>
+<p>SPLENTA界面分为<strong>4个主要面板</strong>：</p>
+<pre><code>┌─────────────────────────────────────────────────────────────┐
+│  [SAVE] [SHUFFLE] [LOAD] [A][🔺][B] [THEME▼]        [⚡]   │  ← 顶部工具栏
+├──────────────────────┬──────────────────────────────────────┤
+│  INPUT DETECTOR      │  ENERGY TOPOLOGY                     │  ← 上半区
+│  [包络可视化]         │  [能量拓扑图]                         │
+│  [Scale: 100%]       │                                      │
+├──────────────────────┴─────────────────┬────────────────────┤
+│  ENFORCER CORE                         │  MASTER OUTPUT     │  ← 下半区
+│  [DETECTOR] [GENERATOR] [ENVELOPE]     │  [输出控制]         │
+│   ○ ○ ○     ○ ○ ○       ○ ○ ○ ○        │   ○ ○ ○           │
+│   ○ ○       ○ ○ ○                      │                   │
+└────────────────────────────────────────┴────────────────────┘</code></pre>
+<h3 id="顶部工具栏从左到右">顶部工具栏（从左到右）</h3>
+<ul>
+<li><strong>SAVE</strong>：保存当前参数为自定义预设</li>
+<li><strong>SHUFFLE</strong>：随机生成新参数（实验性音色）</li>
+<li><strong>LOAD</strong>：加载预设（15个工厂预设）</li>
+<li><strong>A/B比较</strong>：快速对比两组参数</li>
+<li><strong>THEME</strong>：主题配色选择器</li>
+<li><strong>POWER</strong>：总开关（右上角闪电图标）</li>
+</ul>
+<h3 id="四大面板">四大面板</h3>
+<ol type="1">
+<li><strong>INPUT DETECTOR</strong>（左上）：显示输入信号的包络波形</li>
+<li><strong>ENERGY TOPOLOGY</strong>（右上）：实时能量分布可视化</li>
+<li><strong>ENFORCER CORE</strong>（左下）：核心参数控制区</li>
+<li><strong>MASTER OUTPUT</strong>（右下）：输出混音控制</li>
+</ol>
+<hr />
+<h2 id="控件详解">控件详解</h2>
+<h3 id="input-detector输入检测器">📍 INPUT DETECTOR（输入检测器）</h3>
+<h4 id="包络可视化">包络可视化</h4>
+<ul>
+<li><strong>绿色波形</strong>：实时显示检测到的输入信号包络</li>
+<li><strong>触发图标</strong>：当检测到瞬态时，右上角会闪烁主题色图标</li>
+<li><strong>Scale控制</strong>：鼠标在 <code>100%</code>
+文字上上下拖动，可缩放波形显示（50%-400%）</li>
+</ul>
+<hr />
+<h3 id="enforcer-core核心参数区">🎛️ ENFORCER CORE（核心参数区）</h3>
+<p>核心区分为<strong>三列</strong>控件：</p>
+<hr />
+<h4 id="第一列-detector检测器">第一列：// DETECTOR（检测器）</h4>
+<p><strong>THRESHOLD（阈值）</strong> <code>-60dB 到 0dB</code> -
+<strong>作用</strong>：设置触发合成器的最低输入电平 -
+<strong>用法</strong>： - 值越高 = 只有强信号才触发（适合主鼓） - 值越低
+= 微弱信号也触发（适合细节增强） - <strong>建议</strong>：从 -20dB
+开始调整</p>
+<p><strong>CEILING（上限）</strong> <code>-40dB 到 0dB</code> -
+<strong>作用</strong>：限制检测器的最大输出电平 -
+<strong>用法</strong>：防止过强的瞬态产生过载失真 -
+<strong>建议</strong>：保持在 -6dB 左右</p>
+<p><strong>DET_REL（检测释放时间）</strong> <code>1ms 到 500ms</code> -
+<strong>作用</strong>：检测器包络的释放速度 - <strong>用法</strong>： -
+短时间（5-20ms）= 快速响应，适合快速打击 - 长时间（100-300ms）=
+平滑响应，适合延音打击 - <strong>建议</strong>：鼓类使用 10-30ms</p>
+<p><strong>F_FREQ（滤波器频率）</strong> <code>20Hz 到 20000Hz</code> -
+<strong>作用</strong>：检测器前置滤波器的中心频率 -
+<strong>用法</strong>：只检测特定频段的瞬态（如只增强低频） -
+<strong>建议</strong>： - 低频鼓：60-150Hz - 军鼓：200-500Hz -
+全频段：关闭滤波（Q设为最小）</p>
+<p><strong>F_Q（滤波器品质因数）</strong> <code>0.1 到 10.0</code> -
+<strong>作用</strong>：滤波器的陡峭程度 - <strong>用法</strong>： - Q =
+0.1 = 几乎不滤波（全频段通过） - Q = 5-10 = 极窄频段（精确定位） -
+<strong>建议</strong>：一般使用 0.5-2.0</p>
+<p><strong>👂 Audition（监听按钮）</strong> -
+<strong>作用</strong>：单独监听合成音色（不含原始信号） -
+<strong>用法</strong>：点击切换，用于调整合成音色的音高和包络 -
+<strong>图标</strong>：耳机符号，激活时高亮显示</p>
+<hr />
+<h4 id="第二列-generator音色生成器">第二列：//
+GENERATOR（音色生成器）</h4>
+<p><strong>START_FREQ（起始频率）</strong> <code>20Hz 到 2000Hz</code> -
+<strong>作用</strong>：合成音色的起始音高 - <strong>用法</strong>： -
+808 Kick：60-80Hz - Sub Drop：30-40Hz - 军鼓：150-250Hz -
+<strong>建议</strong>：根据音乐调性选择（如C调 = 65Hz）</p>
+<p><strong>PEAK_FREQ（峰值频率）</strong> <code>20Hz 到 2000Hz</code> -
+<strong>作用</strong>：音高包络到达的目标频率 - <strong>用法</strong>：
+- 相同频率 = 无音高变化（纯音调） - 高于起始 = 上扫音高（点击感） -
+低于起始 = 下扫音高（经典808） - <strong>建议</strong>： - Kick：起始
+80Hz → 峰值 50Hz（下扫） - Tom：起始 150Hz → 峰值 100Hz</p>
+<p><strong>SHAPE（波形选择）</strong> - <strong>选项</strong>： -
+<strong>SINE</strong>（正弦波）：纯净低频，无谐波 -
+<strong>TRI</strong>（三角波）：温暖低频，少量谐波 -
+<strong>SAW</strong>（锯齿波）：明亮音色，丰富谐波 -
+<strong>SQR</strong>（方波）：空心音色，奇次谐波 -
+<strong>用法</strong>：点击按钮切换 - <strong>建议</strong>： - Sub Bass
+使用 SINE - 808 Kick 使用 SINE/TRI - 合成打击 使用 SAW/SQR</p>
+<p><strong>COLOR（色彩饱和度）</strong> <code>0% 到 100%</code> -
+<strong>作用</strong>：模拟电路饱和失真，增加谐波和温暖感 -
+<strong>界面</strong>：大型圆形控件，带刻度环 - <strong>用法</strong>：
+- 0% = 干净数字音色 - 30-50% = 温暖模拟感 - 80-100% = 强烈失真效果 -
+<strong>建议</strong>：从 20-40% 开始</p>
+<p><strong>NOISE_MIX（噪声混合）</strong> <code>0% 到 100%</code> -
+<strong>作用</strong>：混入白噪声，增加攻击感和空气感 -
+<strong>用法</strong>： - 0% = 纯音调 - 10-30% = 轻微噪声（适合Kick） -
+50-80% = 重噪声（适合军鼓、嗵鼓） - <strong>建议</strong>：Kick使用
+0-15%，Snare使用 40-70%</p>
+<hr />
+<h4 id="第三列-envelope包络控制">第三列：// ENVELOPE（包络控制）</h4>
+<p><strong>P_ATT（音高攻击时间）</strong> <code>0.1ms 到 100ms</code> -
+<strong>作用</strong>：从起始频率到峰值频率的过渡时间 -
+<strong>用法</strong>： - 短时间（0-5ms）= 瞬间音高变化（点击感） -
+长时间（20-50ms）= 缓慢滑音（808效果）</p>
+<p><strong>P_DEC（音高衰减时间）</strong> <code>1ms 到 1000ms</code> -
+<strong>作用</strong>：从峰值频率回到起始频率的时间 -
+<strong>用法</strong>： - 短时间 = 快速回落 - 长时间 =
+经典808音高拖尾（120-400ms）</p>
+<p><strong>A_ATT（振幅攻击时间）</strong> <code>0.1ms 到 100ms</code> -
+<strong>作用</strong>：音量从0到最大的上升时间 - <strong>用法</strong>：
+- 极短（0-2ms）= 瞬间打击（Kick、Snare） - 中等（5-15ms）=
+柔和起音（Tom）</p>
+<p><strong>A_DEC（振幅衰减时间）</strong> <code>1ms 到 2000ms</code> -
+<strong>作用</strong>：音量衰减到0的时间 - <strong>用法</strong>： -
+短时间（50-150ms）= 紧凑打击 - 长时间（300-800ms）= 延音效果（Sub
+Drop）</p>
+<p><strong>RETRIGGER MODE（重触发模式）</strong> -
+<strong>选项</strong>： -
+<strong>POLY</strong>（复音）：每次触发创建新音符（重叠发声） -
+<strong>MONO</strong>（单音）：新触发会停止旧音符（防止叠加） -
+<strong>用法</strong>：点击按钮切换 - <strong>建议</strong>： - 快速连击
+→ MONO（避免混乱） - 独立打击 → POLY（更自然）</p>
+<hr />
+<h3 id="master-output主输出控制">🎚️ MASTER OUTPUT（主输出控制）</h3>
+<p><strong>DUCKING（闪避）</strong> <code>-40dB 到 0dB</code> -
+<strong>作用</strong>：当合成器触发时，降低原始信号的音量 -
+<strong>用法</strong>： - 0dB = 无闪避（原始信号不变） - -20dB =
+强闪避（合成音色更突出） -
+<strong>应用</strong>：避免原始鼓和合成鼓叠加过载</p>
+<p><strong>D_ATT / D_DEC（闪避包络时间）</strong> -
+<strong>作用</strong>：闪避效果的攻击和释放时间 -
+<strong>建议</strong>：5-20ms，快速响应</p>
+<p><strong>WET_GAIN（合成增益）</strong> <code>-20dB 到 +20dB</code> -
+<strong>作用</strong>：合成音色的输出电平 -
+<strong>用法</strong>：调整合成信号的响度</p>
+<p><strong>DRY_MIX（原始混合）</strong> <code>0% 到 100%</code> -
+<strong>作用</strong>：原始输入信号的混合比例 - <strong>用法</strong>：
+- 0% = 纯合成音色 - 50% = 原始和合成各半 - 100% = 完全保留原始信号</p>
+<p><strong>MIX（总混合）</strong> <code>0% 到 100%</code> -
+<strong>作用</strong>：插件效果的干湿比 - <strong>用法</strong>： - 0% =
+完全旁通（原始信号） - 100% = 完全效果</p>
+<p><strong>SPLIT（分离模式）</strong> - <strong>开关状态</strong>： -
+<strong>OFF</strong>：原始信号 + 合成信号混合输出到立体声 -
+<strong>ON</strong>：左声道 = 原始信号，右声道 = 合成信号 -
+<strong>用法</strong>：分别处理原始和合成信号（如单独压缩） -
+<strong>图标</strong>：A/C分离符号</p>
+<p><strong>MIDI键盘图标</strong>（右下角） -
+<strong>作用</strong>：开启/关闭MIDI模式和虚拟键盘 -
+<strong>用法</strong>：点击图标，窗口下方展开虚拟键盘</p>
+<hr />
+<h2 id="预设系统">预设系统</h2>
+<h3 id="加载预设">加载预设</h3>
+<p>点击顶部 <strong>LOAD</strong>（文件夹图标）按钮，弹出菜单包含
+<strong>15个工厂预设</strong>，分为3类：</p>
+<h4 id="realistic真实音效">🔫 REALISTIC（真实音效）</h4>
+<ol type="1">
+<li><strong>Gunshot</strong>：枪声效果</li>
+<li><strong>Cannon</strong>：炮声轰鸣</li>
+<li><strong>Footstep</strong>：脚步声增强</li>
+<li><strong>Door Slam</strong>：关门撞击</li>
+<li><strong>Thunder</strong>：雷声</li>
+</ol>
+<h4 id="sci-fi科幻音效">🚀 SCI-FI（科幻音效）</h4>
+<ol start="6" type="1">
+<li><strong>Laser</strong>：激光枪</li>
+<li><strong>Pulse</strong>：脉冲能量</li>
+<li><strong>Energy Shield</strong>：能量护盾</li>
+<li><strong>Portal</strong>：传送门</li>
+<li><strong>Drone</strong>：无人机嗡鸣</li>
+</ol>
+<h4 id="music音乐制作">🎵 MUSIC（音乐制作）</h4>
+<ol start="11" type="1">
+<li><strong>808 Kick</strong>：经典嘻哈底鼓</li>
+<li><strong>Sub Drop</strong>：低频下潜</li>
+<li><strong>Boom Bap</strong>：90年代打击</li>
+<li><strong>Deep House</strong>：深邃House低音</li>
+<li><strong>Trap 808</strong>：现代Trap下滑音</li>
+</ol>
+<h3 id="保存预设">保存预设</h3>
+<ol type="1">
+<li>调整好参数后，点击 <strong>SAVE</strong>（软盘图标）</li>
+<li>当前参数会保存为”Custom Preset”</li>
+<li>⚠️ 注意：暂不支持自定义命名（后续版本更新）</li>
+</ol>
+<h3 id="随机生成">随机生成</h3>
+<p>点击 <strong>SHUFFLE</strong>（骰子图标）按钮： - 随机生成新参数组合
+- 包络显示会立即清空 - 适合寻找实验性音色</p>
+<hr />
+<h2 id="ab比较功能">AB比较功能</h2>
+<p>顶部栏的 <strong>A/B比较系统</strong>让你快速对比两组参数设置。</p>
+<h3 id="界面布局">界面布局</h3>
+<pre><code>[A] [🔺] [B]</code></pre>
+<ul>
+<li><strong>A按钮</strong>：切换到A组参数</li>
+<li><strong>B按钮</strong>：切换到B组参数</li>
+<li><strong>🔺金字塔</strong>：复制参数按钮</li>
+</ul>
+<h3 id="使用方法">使用方法</h3>
+<h4 id="基础切换">基础切换</h4>
+<ol type="1">
+<li>调整参数到理想状态（比如重低音808）</li>
+<li>点击 <strong>B</strong> 切换到B组</li>
+<li>调整新参数（比如更明亮的808）</li>
+<li>点击 <strong>A</strong> 切换回原始音色</li>
+<li>快速对比两种音色</li>
+</ol>
+<h4 id="复制功能">复制功能</h4>
+<p><strong>左键点击金字塔</strong> = A复制到B -
+金字塔亮<strong>青色</strong>，<strong>顺时针旋转2圈</strong> -
+A组参数覆盖B组 - 不会自动切换状态（需手动点B查看）</p>
+<p><strong>右键点击金字塔</strong> = B复制到A -
+金字塔亮<strong>紫色</strong>，<strong>逆时针旋转2圈</strong> -
+B组参数覆盖A组 - 不会自动切换状态（需手动点A查看）</p>
+<h3 id="使用场景">使用场景</h3>
+<ul>
+<li><strong>调整对比</strong>：从预设开始，复制到B，微调后对比</li>
+<li><strong>备份保险</strong>：尝试激进调整前，先复制到B组</li>
+<li><strong>版本迭代</strong>：逐步优化音色，A/B来回对比</li>
+</ul>
+<hr />
+<h2 id="midi模式">MIDI模式</h2>
+<p>SPLENTA支持两种MIDI输入方式：</p>
+<h3 id="虚拟键盘">1️⃣ 虚拟键盘</h3>
+<ol type="1">
+<li>点击右下角 <strong>MIDI键盘图标</strong></li>
+<li>窗口向下扩展，显示虚拟键盘</li>
+<li>鼠标点击琴键演奏</li>
+<li>窗口高度从 620px 扩展到 720px</li>
+<li>再次点击图标关闭键盘</li>
+</ol>
+<h3 id="外部midi控制器">2️⃣ 外部MIDI控制器</h3>
+<ol type="1">
+<li>连接MIDI键盘/打击垫到电脑</li>
+<li>在DAW中将MIDI轨道路由到SPLENTA</li>
+<li>演奏MIDI设备，自动触发合成器</li>
+<li><strong>C4（MIDI 60）=
+261.63Hz</strong>，其他音符按12平均律计算频率</li>
+</ol>
+<h3 id="midi音高映射">MIDI音高映射</h3>
+<ul>
+<li>SPLENTA会根据MIDI音符号计算频率</li>
+<li><strong>频率计算公式</strong>：<code>frequency = 440.0 × 2^((midiNote - 69) / 12.0)</code></li>
+<li>顶部栏会显示当前MIDI音符名称和频率（如 “C4 261Hz”）</li>
+</ul>
+<h3 id="midi模式优先级">MIDI模式优先级</h3>
+<ul>
+<li>当MIDI音符正在演奏时，<strong>瞬态检测器会被禁用</strong></li>
+<li>MIDI释放后，自动恢复瞬态检测模式</li>
+<li>可以混合使用：MIDI演奏旋律 + 瞬态增强节奏</li>
+</ul>
+<hr />
+<h2 id="使用技巧">使用技巧</h2>
+<h3 id="鼓组增强">🥁 鼓组增强</h3>
+<p><strong>目标</strong>：为原始鼓轨增加低频冲击力</p>
+<ol type="1">
+<li>加载预设：“808 Kick”</li>
+<li>调整 <strong>THRESHOLD</strong>
+让底鼓触发，军鼓不触发（-15dB左右）</li>
+<li>设置 <strong>START_FREQ</strong> 为音乐调性的根音（如C调 =
+65Hz）</li>
+<li>降低 <strong>PEAK_FREQ</strong> 到 40-50Hz（下扫音高）</li>
+<li>设置 <strong>A_DEC</strong> = 150-200ms（适中尾音）</li>
+<li><strong>MIX</strong> = 40-60%（混合原始鼓）</li>
+<li>启用 <strong>DUCKING</strong> = -10dB（避免叠加过载）</li>
+</ol>
+<hr />
+<h3 id="sub-bass层叠">🎹 Sub Bass层叠</h3>
+<p><strong>目标</strong>：为Bass线条增加超低频</p>
+<ol type="1">
+<li>加载预设：“Deep House”</li>
+<li>设置 <strong>F_FREQ</strong> = 100Hz，<strong>F_Q</strong> =
+1.0（只检测低频）</li>
+<li><strong>START_FREQ</strong> = <strong>PEAK_FREQ</strong> =
+根音频率（无音高变化）</li>
+<li><strong>SHAPE</strong> = SINE（纯净低频）</li>
+<li><strong>COLOR</strong> = 15-25%（轻微温暖感）</li>
+<li><strong>A_ATT</strong> = 10ms，<strong>A_DEC</strong> =
+400ms（缓慢包络）</li>
+<li><strong>DRY_MIX</strong> = 0%（纯合成低频）</li>
+<li><strong>MIX</strong> = 30-40%</li>
+</ol>
+<hr />
+<h3 id="瞬态增强transient-shaper">⚡ 瞬态增强（Transient Shaper）</h3>
+<p><strong>目标</strong>：增强打击乐的攻击感</p>
+<ol type="1">
+<li>加载预设：“Boom Bap”</li>
+<li><strong>THRESHOLD</strong> = -25dB（捕捉所有打击）</li>
+<li><strong>START_FREQ</strong> = 200Hz，<strong>PEAK_FREQ</strong> =
+300Hz（轻微上扫）</li>
+<li><strong>A_ATT</strong> = 0.5ms（极快攻击）</li>
+<li><strong>A_DEC</strong> = 30ms（短促衰减）</li>
+<li><strong>NOISE_MIX</strong> = 40%（增加空气感）</li>
+<li><strong>MIX</strong> = 20-30%（只增强，不替代）</li>
+</ol>
+<hr />
+<h3 id="音效设计">🎬 音效设计</h3>
+<p><strong>目标</strong>：创造科幻音效</p>
+<ol type="1">
+<li>加载预设：“Laser” 或 “Portal”</li>
+<li>调整 <strong>START_FREQ</strong> 和 <strong>PEAK_FREQ</strong>
+创造大跨度音高扫描</li>
+<li>尝试 <strong>SAW</strong> 或 <strong>SQR</strong>
+波形（更丰富谐波）</li>
+<li><strong>P_ATT</strong> 和 <strong>P_DEC</strong>
+设置为不同值（非对称扫描）</li>
+<li><strong>COLOR</strong> = 60-80%（失真效果）</li>
+<li><strong>NOISE_MIX</strong> = 50-70%（能量感）</li>
+<li>点击 <strong>SHUFFLE</strong> 多次，寻找意外惊喜</li>
+<li>使用 <strong>Audition</strong> 单独监听合成音色</li>
+</ol>
+<hr />
+<h3 id="ab比较工作流">🔄 AB比较工作流</h3>
+<p><strong>目标</strong>：优化音色调整过程</p>
+<p><strong>场景1：渐进优化</strong> 1. 加载预设：“808
+Kick”，调整到满意（版本A） 2. 左键点击金字塔（A→B复制） 3.
+点击B按钮，微调参数（比如增加 <strong>COLOR</strong>） 4.
+点击A/B来回切换，对比哪个更好 5.
+如果B更好，保持B；如果A更好，右键金字塔（B→A覆盖）</p>
+<p><strong>场景2：安全实验</strong> 1. 当前音色很好，想尝试激进调整 2.
+左键金字塔备份到B 3. 在A组随意调整，甚至点击 <strong>SHUFFLE</strong> 4.
+不满意？点击B按钮，立即恢复原音色 5. 满意？继续优化A组</p>
+<hr />
+<h2 id="常见问题">常见问题</h2>
+<h3 id="为什么没有声音">❓ 为什么没有声音？</h3>
+<ol type="1">
+<li><strong>检查POWER按钮</strong>（右上角）是否开启（亮主题色）</li>
+<li><strong>检查MIX旋钮</strong>是否大于0%</li>
+<li><strong>检查THRESHOLD</strong>是否过高（降低到-20dB测试）</li>
+<li><strong>检查DAW音频路由</strong>是否正确</li>
+<li>启用 <strong>Audition</strong>
+单独监听合成音色（排查是检测器问题还是混音问题）</li>
+</ol>
+<h3 id="触发不稳定漏触发">❓ 触发不稳定/漏触发？</h3>
+<ol type="1">
+<li>降低 <strong>THRESHOLD</strong>（更敏感）</li>
+<li>调整 <strong>DET_REL</strong> 到20-50ms（避免过快重触发）</li>
+<li>检查输入信号是否过小（提高输入增益）</li>
+<li>使用 <strong>F_FREQ</strong> 和 <strong>F_Q</strong>
+定位特定频段（过滤干扰）</li>
+</ol>
+<h3 id="音色过亮过暗">❓ 音色过亮/过暗？</h3>
+<ol type="1">
+<li><strong>过亮</strong>：降低 <strong>COLOR</strong>，使用 SINE
+波形，减少 <strong>NOISE_MIX</strong></li>
+<li><strong>过暗</strong>：增加 <strong>COLOR</strong>，切换到 SAW/SQR
+波形，提高 <strong>NOISE_MIX</strong></li>
+</ol>
+<h3 id="低频不够强">❓ 低频不够强？</h3>
+<ol type="1">
+<li>提高 <strong>WET_GAIN</strong>（+6dB 到 +12dB）</li>
+<li>降低 <strong>START_FREQ</strong> 和
+<strong>PEAK_FREQ</strong>（40-60Hz）</li>
+<li>使用 SINE 波形（最强低频）</li>
+<li>减少 <strong>DRY_MIX</strong>（更多合成信号）</li>
+</ol>
+<h3 id="如何避免相位问题">❓ 如何避免相位问题？</h3>
+<ul>
+<li>SPLENTA的合成信号是独立生成的，不会与原始信号产生相位抵消</li>
+<li>如果原始鼓已有低频，建议使用 <strong>DUCKING</strong> 功能</li>
+<li>或者启用 <strong>SPLIT</strong> 模式，分别处理原始和合成信号</li>
+</ul>
+<hr />
+<h2 id="系统要求">系统要求</h2>
+<ul>
+<li><strong>操作系统</strong>：macOS 10.13 或更高版本</li>
+<li><strong>处理器</strong>：Intel 或 Apple Silicon（M1/M2/M3）</li>
+<li><strong>内存</strong>：最低 4GB RAM</li>
+<li><strong>插件格式</strong>：VST3</li>
+<li><strong>DAW兼容</strong>：Logic Pro、FL Studio、Ableton
+Live、Reaper、Studio One等</li>
+</ul>
+<hr />
+<h2 id="技术支持">技术支持</h2>
+<ul>
+<li><strong>开发者</strong>：yourcompany</li>
+<li><strong>版本</strong>：V19.5 (2025-12-23)</li>
+<li><strong>GitHub</strong>：https://github.com/fatimabarochow23-hash/SPLENTA</li>
+</ul>
+<hr />
+<h2 id="更新日志">更新日志</h2>
+<h3 id="v19.5-2025-12-23">V19.5 (2025-12-23)</h3>
+<ul>
+<li>✨ 新增 A/B比较功能（3D金字塔旋转动画）</li>
+<li>🐛 修复复制参数需要提前切换的问题</li>
+</ul>
+<h3 id="v19.4-2025-12-23">V19.4 (2025-12-23)</h3>
+<ul>
+<li>✨ 完整MIDI模式支持（虚拟键盘 + 外部MIDI）</li>
+<li>✨ 实时MIDI音符显示（七段数码管样式）</li>
+</ul>
+<h3 id="v19.3-2025-12-22">V19.3 (2025-12-22)</h3>
+<ul>
+<li>✨ 新增 SHUFFLE 随机参数生成</li>
+<li>✨ 新增 COLOR 饱和度控件（大型圆形UI）</li>
+<li>✨ 新增 RETRIGGER 模式选择（POLY/MONO）</li>
+<li>✨ 新增 SPLIT 立体声分离模式</li>
+</ul>
+<h3 id="v19.0-19.2">V19.0-19.2</h3>
+<ul>
+<li>🎨 5种主题配色系统</li>
+<li>🎚️ 完整参数控制界面</li>
+<li>📊 实时包络可视化</li>
+<li>🎵 15个工厂预设</li>
+</ul>
+<hr />
+<p><strong>© 2025 yourcompany. All rights reserved.</strong></p>
+<hr />
+<h2 id="附录参数速查表">附录：参数速查表</h2>
+<table>
+<thead>
+<tr class="header">
+<th>参数</th>
+<th>范围</th>
+<th>默认值</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>THRESHOLD</td>
+<td>-60 ~ 0 dB</td>
+<td>-20 dB</td>
+<td>触发阈值</td>
+</tr>
+<tr class="even">
+<td>CEILING</td>
+<td>-40 ~ 0 dB</td>
+<td>-6 dB</td>
+<td>检测上限</td>
+</tr>
+<tr class="odd">
+<td>DET_REL</td>
+<td>1 ~ 500 ms</td>
+<td>20 ms</td>
+<td>检测释放</td>
+</tr>
+<tr class="even">
+<td>F_FREQ</td>
+<td>20 ~ 20000 Hz</td>
+<td>100 Hz</td>
+<td>滤波器频率</td>
+</tr>
+<tr class="odd">
+<td>F_Q</td>
+<td>0.1 ~ 10.0</td>
+<td>0.7</td>
+<td>滤波器Q值</td>
+</tr>
+<tr class="even">
+<td>START_FREQ</td>
+<td>20 ~ 2000 Hz</td>
+<td>80 Hz</td>
+<td>起始频率</td>
+</tr>
+<tr class="odd">
+<td>PEAK_FREQ</td>
+<td>20 ~ 2000 Hz</td>
+<td>50 Hz</td>
+<td>峰值频率</td>
+</tr>
+<tr class="even">
+<td>COLOR_AMOUNT</td>
+<td>0 ~ 100%</td>
+<td>30%</td>
+<td>饱和度</td>
+</tr>
+<tr class="odd">
+<td>NOISE_MIX</td>
+<td>0 ~ 100%</td>
+<td>0%</td>
+<td>噪声混合</td>
+</tr>
+<tr class="even">
+<td>P_ATT</td>
+<td>0.1 ~ 100 ms</td>
+<td>2 ms</td>
+<td>音高攻击</td>
+</tr>
+<tr class="odd">
+<td>P_DEC</td>
+<td>1 ~ 1000 ms</td>
+<td>100 ms</td>
+<td>音高衰减</td>
+</tr>
+<tr class="even">
+<td>A_ATT</td>
+<td>0.1 ~ 100 ms</td>
+<td>1 ms</td>
+<td>振幅攻击</td>
+</tr>
+<tr class="odd">
+<td>A_DEC</td>
+<td>1 ~ 2000 ms</td>
+<td>200 ms</td>
+<td>振幅衰减</td>
+</tr>
+<tr class="even">
+<td>DUCKING</td>
+<td>-40 ~ 0 dB</td>
+<td>0 dB</td>
+<td>闪避深度</td>
+</tr>
+<tr class="odd">
+<td>D_ATT</td>
+<td>1 ~ 100 ms</td>
+<td>10 ms</td>
+<td>闪避攻击</td>
+</tr>
+<tr class="even">
+<td>D_DEC</td>
+<td>1 ~ 500 ms</td>
+<td>50 ms</td>
+<td>闪避释放</td>
+</tr>
+<tr class="odd">
+<td>WET_GAIN</td>
+<td>-20 ~ +20 dB</td>
+<td>0 dB</td>
+<td>合成增益</td>
+</tr>
+<tr class="even">
+<td>DRY_MIX</td>
+<td>0 ~ 100%</td>
+<td>50%</td>
+<td>原始混合</td>
+</tr>
+<tr class="odd">
+<td>MIX</td>
+<td>0 ~ 100%</td>
+<td>100%</td>
+<td>总混合</td>
+</tr>
+</tbody>
+</table>
+</body>
+</html>

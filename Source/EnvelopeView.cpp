@@ -96,12 +96,12 @@ void EnvelopeView::paint(juce::Graphics& g)
     g.setColour(juce::Colour(0xFFFF4444).withAlpha(0.8f));
     g.drawText("CEIL", 5, (int)ceilingY - 12, 35, 10, juce::Justification::left);
 
-    // If no valid snapshot, show "Waiting for trigger..." message
+    // If no valid snapshot, show "Something for Nothing" message
     if (!hasValidSnapshot)
     {
         g.setFont(juce::FontOptions(14.0f));
         g.setColour(juce::Colours::white.withAlpha(0.3f));
-        g.drawText("Waiting for trigger...", 0, (int)height / 2 - 10, (int)width, 20, juce::Justification::centred);
+        g.drawText("Something for Nothing", 0, (int)height / 2 - 10, (int)width, 20, juce::Justification::centred);
         return;
     }
 
@@ -124,7 +124,7 @@ void EnvelopeView::paint(juce::Graphics& g)
     {
         g.setFont(juce::FontOptions(14.0f));
         g.setColour(juce::Colours::white.withAlpha(0.3f));
-        g.drawText("Waiting for trigger...", 0, (int)height / 2 - 10, (int)width, 20, juce::Justification::centred);
+        g.drawText("Something for Nothing", 0, (int)height / 2 - 10, (int)width, 20, juce::Justification::centred);
         return;
     }
 

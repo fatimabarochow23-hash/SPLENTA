@@ -46,7 +46,7 @@ private:
     };
 
     // Particle system
-    static constexpr int numParticles = 400;
+    static constexpr int numParticles = 1200;  // Increased for wormhole (needs both sides)
     std::vector<Particle> particles;
 
     // Animation state
@@ -63,11 +63,20 @@ private:
     float scatterAmount = 0.0f;      // 0.0 = stable, 1.0 = fully scattered
     std::vector<juce::Point<float>> particleOffsets; // Scatter offsets for each particle
 
-    // Sakura trail for Pink theme (Cartesian)
-    static constexpr int trailLength = 30; // Increased for more dramatic trail
-    std::vector<juce::Point<float>> sakuraTrail; // Historical positions for petal trail
-    std::vector<float> sakuraTrailRotations; // Rotation angles for each trail position
-    int trailWriteIndex = 0;
+    // Healing light beams for Pink theme (recovery effect)
+    struct LightBeam {
+        float x, z;          // Position around heart base
+        float height;        // Current height (0.0 = bottom, 1.0 = top)
+        float speed;         // Rise speed
+        float alpha;         // Opacity
+        float phase;         // Animation phase offset
+    };
+    std::vector<LightBeam> healingBeams;
+    float beamSpawnTimer = 0.0f;
+
+    // Heart beat timing
+    float lastBeatTime = 0.0f;
+    static constexpr float beatInterval = 1.8f; // 1.8 seconds per beat (~33 BPM)
 
     // Theme renderers
     void drawMobius(juce::Graphics& g, float width, float height, float cx, float cy);
@@ -82,8 +91,7 @@ private:
     };
     Projection3D project3D(float x, float y, float z, float cx, float cy);
 
-    // Helper: Draw UFO (for Pink theme)
-    void drawUFO(juce::Graphics& g, float x, float y, float size, float rotation, bool isFlash);
+    // Pink theme now renders anatomical heart (no helper needed)
 
     // Helper: Convert accent color to RGBA string equivalent
     juce::Colour getColorWithAlpha(float alpha);

@@ -33,9 +33,8 @@ EnergyTopologyComponent::EnergyTopologyComponent()
         particleOffsets.push_back(juce::Point<float>(0.0f, 0.0f));
     }
 
-    // Initialize sakura trail
-    sakuraTrail.resize(trailLength, juce::Point<float>(0.0f, 0.0f));
-    sakuraTrailRotations.resize(trailLength, 0.0f);
+    // Initialize healing light beams (empty, spawned dynamically)
+    healingBeams.clear();
 
     // Initialize with default Bronze palette
     palette = ThemePalette::getPaletteByIndex(0);
@@ -88,6 +87,10 @@ void EnergyTopologyComponent::setTriggerState(bool isTriggered)
             particleOffsets[i].x = std::cos(angle) * distance;
             particleOffsets[i].y = std::sin(angle) * distance;
         }
+
+        // Clear existing healing beams (will respawn during recovery)
+        healingBeams.clear();
+        beamSpawnTimer = 0.0f;
     }
     lastTriggerState = isTriggered;
 }
@@ -139,6 +142,42 @@ void EnergyTopologyComponent::timerCallback()
         scatterAmount *= 0.95f; // Decay by 5% per frame (doubled recovery time at 60fps)
         if (scatterAmount < 0.01f)
             scatterAmount = 0.0f;
+
+        // Spawn healing light beams during recovery (when scatter is decaying)
+        beamSpawnTimer += 0.016f; // ~60fps
+        if (beamSpawnTimer > 0.05f && healingBeams.size() < 20) // Spawn every 50ms, max 20 beams
+        {
+            juce::Random random;
+            LightBeam beam;
+            // Random position around heart base (circular distribution)
+            float angle = random.nextFloat() * juce::MathConstants<float>::twoPi;
+            float radius = 40.0f + random.nextFloat() * 30.0f; // 40-70 pixels from center
+            beam.x = std::cos(angle) * radius;
+            beam.z = std::sin(angle) * radius;
+            beam.height = 0.0f;
+            beam.speed = 0.015f + random.nextFloat() * 0.010f; // Rise speed: 0.015-0.025
+            beam.alpha = 0.6f + random.nextFloat() * 0.4f; // Initial alpha: 0.6-1.0
+            beam.phase = random.nextFloat() * juce::MathConstants<float>::twoPi;
+            healingBeams.push_back(beam);
+            beamSpawnTimer = 0.0f;
+        }
+    }
+
+    // Update healing light beams
+    for (auto it = healingBeams.begin(); it != healingBeams.end();)
+    {
+        it->height += it->speed;
+        it->alpha *= 0.98f; // Fade out as it rises
+
+        // Remove beam when it reaches top or becomes invisible
+        if (it->height > 1.2f || it->alpha < 0.05f)
+        {
+            it = healingBeams.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
     }
 
     repaint();
@@ -157,27 +196,30 @@ void EnergyTopologyComponent::paint(juce::Graphics& g)
 
     // Get current theme type from palette
     // We need to determine theme by comparing accent color (simple approach)
-    // Bronze: FFB045, Blue: 22D3EE, Purple: D8B4FE, Green: 4ADE80, Pink: FF3399
-    auto accentRGB = palette.accent.getRed() | (palette.accent.getGreen() << 8) | (palette.accent.getBlue() << 16);
+    // Bronze: FFB045, Blue: 22D3EE, Purple: D8B4FE, Green: 4ADE80, Pink: f0a5c2
+    int redVal = palette.accent.getRed();
+    int greenVal = palette.accent.getGreen();
+    int blueVal = palette.accent.getBlue();
 
-    if (palette.accent.isOpaque() && palette.accent.getGreen() > 200 && palette.accent.getBlue() > 200) {
-        // Blue (22D3EE - cyan-ish, high G and B)
+    // Use more robust color distance matching
+    if (greenVal > 200 && blueVal > 200 && redVal < 100) {
+        // Blue (22D3EE - cyan: R:34, G:211, B:238)
         drawWaves(g, width, height, cx, cy);
     }
-    else if (palette.accent.getRed() > 200 && palette.accent.getBlue() > 200) {
-        // Purple (D8B4FE - high R and B)
+    else if (redVal > 200 && blueVal > 240 && greenVal > 150 && greenVal < 200) {
+        // Purple (D8B4FE - R:216, G:180, B:254) - high R, very high B, medium G
         drawMoon(g, width, height, cx, cy);
     }
-    else if (palette.accent.getGreen() > 200 && palette.accent.getRed() < 100) {
-        // Green (4ADE80 - high G, low R)
+    else if (greenVal > 200 && redVal < 100 && blueVal < 200) {
+        // Green (4ADE80 - R:74, G:222, B:128)
         drawNetwork(g, width, height, cx, cy);
     }
-    else if (palette.accent.getRed() > 200 && palette.accent.getGreen() < 100) {
-        // Pink (FF3399 - high R, low G)
+    else if (redVal > 220 && greenVal > 150 && greenVal < 180 && blueVal > 180 && blueVal < 210) {
+        // Pink (f0a5c2 - R:240, G:165, B:194) - high R, medium G, medium-high B
         drawCartesian(g, width, height, cx, cy);
     }
     else {
-        // Default: Bronze
+        // Default: Bronze (FFB045 - R:255, G:176, B:69)
         drawMobius(g, width, height, cx, cy);
     }
 
@@ -185,8 +227,8 @@ void EnergyTopologyComponent::paint(juce::Graphics& g)
     float normalizedIntensity = intensity / 100.0f;
     float glowOpacity = 0.15f + normalizedIntensity * 0.15f; // Subtle glow
 
-    // Radial gradient from center (20% opacity) to 70% radius (transparent)
-    float radiusScale = width * 0.7f;
+    // Radial gradient - use larger radius to ensure full coverage
+    float radiusScale = std::sqrt(width * width + height * height) * 0.8f;  // Increased to 0.8 for full coverage
     juce::ColourGradient gradient(
         palette.accent.withAlpha(glowOpacity), cx, cy,
         juce::Colours::transparentBlack, cx + radiusScale, cy,
@@ -203,10 +245,10 @@ void EnergyTopologyComponent::resized()
 
 // --- THEME RENDERERS ---
 
-// 1. BRONZE: MOBIUS STRIP
+// 1. BRONZE: INFINITY SYMBOL / FIGURE-8 MOBIUS
 void EnergyTopologyComponent::drawMobius(juce::Graphics& g, float width, float height, float cx, float cy)
 {
-    float scale = juce::jmin(width, height) * 0.35f;
+    float scale = juce::jmin(width, height) * 0.63f;  // Increased 1.5x (0.42 * 1.5 = 0.63)
     float normalizedIntensity = intensity / 100.0f;
     float speedMultiplier = 1.0f + (normalizedIntensity * 3.0f);
 
@@ -214,34 +256,51 @@ void EnergyTopologyComponent::drawMobius(juce::Graphics& g, float width, float h
     {
         auto& p = particles[i];
 
-        // Update particle angle (Mobius parameter 'u')
+        // Update particle angle
         p.angle += p.speed * speedMultiplier;
 
         float u = p.angle;
-        float v = std::sin(p.angle * 2.0f + p.offset) * 0.5f; // Strip width variation
 
-        float radius = scale * (1.0f + v * std::cos(u / 2.0f));
-        float x3d = radius * std::cos(u);
-        float y3d = radius * std::sin(u);
-        float z3d = scale * v * std::sin(u / 2.0f);
+        // Figure-8 / Lemniscate curve with 3D spiral twist
+        float sinU = std::sin(u);
+        float cosU = std::cos(u);
+        float denominator = 1.0f + sinU * sinU;
 
-        // Rotate the whole strip
-        float rotX = time * 0.2f;
-        float rotY = time * 0.3f;
+        // Lemniscate parametric equations
+        float x3d = scale * cosU / denominator;
+        float y3d = scale * sinU * cosU / denominator;
 
+        // Add 3D spiral twist (Mobius effect)
+        // The strip twists as it goes around, creating depth even when viewed from side
+        float stripWidth = std::sin(p.angle * 2.0f + p.offset) * 16.0f;  // Strip thickness
+        float twistPhase = u / 2.0f;  // Half-twist for Mobius
+
+        // Add Z-offset that follows the curve to create 3D depth
+        float z3d = stripWidth * std::sin(twistPhase);
+
+        // Add vertical wave to prevent collapsing to a line from any angle
+        y3d += stripWidth * 0.3f * std::cos(twistPhase);  // Vertical modulation
+
+        // Rotate the whole figure-8
+        float rotX = time * 0.25f;
+        float rotY = time * 0.2f;
+
+        // Y Rotation
         float cosRy = std::cos(rotY);
         float sinRy = std::sin(rotY);
         float xRot = x3d * cosRy - z3d * sinRy;
         float zRot = x3d * sinRy + z3d * cosRy;
 
+        // X Rotation
         float cosRx = std::cos(rotX);
         float sinRx = std::sin(rotX);
         float yRot = y3d * cosRx - zRot * sinRx;
+        float zFinal = y3d * sinRx + zRot * cosRx;
 
         float x2d = cx + xRot;
         float y2d = cy + yRot;
 
-        // Apply scatter effect - radial burst from center
+        // Apply scatter effect
         if (scatterAmount > 0.0f && i < numParticles)
         {
             x2d += particleOffsets[i].x * scatterAmount;
@@ -249,7 +308,7 @@ void EnergyTopologyComponent::drawMobius(juce::Graphics& g, float width, float h
         }
 
         // Depth-based alpha
-        float depthAlpha = (zRot + scale) / (2.0f * scale);
+        float depthAlpha = (zFinal + scale) / (2.0f * scale);
         float alpha = juce::jlimit(0.1f, 1.0f, depthAlpha) * (0.5f + normalizedIntensity * 0.5f);
 
         // Particle size with bypass/SAT modulation
@@ -331,10 +390,11 @@ void EnergyTopologyComponent::drawMoon(juce::Graphics& g, float width, float hei
     float scale = juce::jmin(width, height) * 0.3f;
     float normalizedIntensity = intensity / 100.0f;
 
-    for (int i = 0; i < numParticles; ++i)
+    const int moonParticles = 400;  // Original particle count for moon
+    for (int i = 0; i < moonParticles; ++i)
     {
         // Sphere Surface - Golden Spiral distribution
-        float phi = std::acos(1.0f - 2.0f * (i + 0.5f) / numParticles);
+        float phi = std::acos(1.0f - 2.0f * (i + 0.5f) / moonParticles);
         float theta = juce::MathConstants<float>::pi * (1.0f + std::sqrt(5.0f)) * (i + 0.5f);
 
         float r = scale;
@@ -360,10 +420,11 @@ void EnergyTopologyComponent::drawMoon(juce::Graphics& g, float width, float hei
         float y2d = cy + y3d;
 
         // Apply scatter effect - radial explosion from moon center
-        if (scatterAmount > 0.0f && i < numParticles)
+        if (scatterAmount > 0.0f)
         {
-            x2d += particleOffsets[i].x * scatterAmount;
-            y2d += particleOffsets[i].y * scatterAmount;
+            int offsetIndex = i % numParticles;
+            x2d += particleOffsets[offsetIndex].x * scatterAmount;
+            y2d += particleOffsets[offsetIndex].y * scatterAmount;
         }
 
         // Draw Sphere Dot
@@ -508,223 +569,108 @@ EnergyTopologyComponent::Projection3D EnergyTopologyComponent::project3D(float x
     return result;
 }
 
-// 5. PINK: SAKURA BLOSSOM FLIGHT (Redesigned)
+// 5. PINK: WORMHOLE (Pink Einstein-Rosen Bridge - Vertical)
 void EnergyTopologyComponent::drawCartesian(juce::Graphics& g, float width, float height, float cx, float cy)
 {
-    float scale = juce::jmin(width, height) * 0.45f; // Increased from 0.35f for larger stage
     float normalizedIntensity = intensity / 100.0f;
 
-    // 1. Draw Lissajous Curve with horizontal stretch and distortion on trigger
-    juce::Path curvePath;
-    bool firstPoint = true;
-    const int samples = 150;
+    // Wormhole geometry parameters (scaled down 20%)
+    const float tunnelWaist = 58.0f;   // Throat radius (72 * 0.8)
+    const float flareFactor = 2.2f;    // Steeper expansion
+    const int longitudinal = 35;       // Vertical resolution
 
-    for (int i = 0; i <= samples; ++i)
+    // Main rotation
+    float mainRotY = time * 0.4f;
+    float mainRotX = 0.55f + std::sin(time * 0.15f) * 0.1f; // Restored tilt
+
+    // Breathing pulse
+    float pulse = 1.0f + normalizedIntensity * 0.14f * std::sin(time * 2.5f);
+
+    // Generate both halves: side = -1 (black hole), side = 1 (white hole)
+    for (int side : {-1, 1})
     {
-        float t = (i / (float)samples) * juce::MathConstants<float>::twoPi;
-
-        // Lissajous Knot equations with horizontal stretch
-        float x3d = scale * (std::sin(t) + 2.0f * std::sin(2.0f * t)) / 2.5f * 1.4f; // 1.4x horizontal stretch
-        float y3d = scale * (std::cos(t) - 2.0f * std::cos(2.0f * t)) / 2.5f;
-        float z3d = scale * (-std::sin(3.0f * t)) / 2.0f;
-
-        // Apply distortion when scatterAmount > 0 (curve inflation/twist)
-        if (scatterAmount > 0.0f)
+        for (int j = 0; j < longitudinal; ++j)
         {
-            float distortion = scatterAmount * 40.0f; // Increased from 30.0f
-            float noiseX = std::sin(t * 5.0f + time) * distortion;
-            float noiseY = std::cos(t * 7.0f + time * 1.2f) * distortion;
-            float noiseZ = std::sin(t * 3.0f + time * 0.8f) * distortion;
+            float v = j / (float)(longitudinal - 1); // 0.0 to 1.0
+            float y3d = v * 168.0f * side;           // Vertical position (210 * 0.8)
 
-            x3d += noiseX;
-            y3d += noiseY;
-            z3d += noiseZ;
-        }
+            // Core radius equation: throat + exponential expansion
+            float r = tunnelWaist + std::pow(v, flareFactor) * 106.0f; // Opening expansion (132 * 0.8)
 
-        auto proj = project3D(x3d, y3d, z3d, cx, cy);
+            // Dynamic particle count per ring (denser at edges)
+            int particlesInRing = 18 + (int)(v * 48.0f);
 
-        if (firstPoint) {
-            curvePath.startNewSubPath(proj.x, proj.y);
-            firstPoint = false;
-        } else {
-            curvePath.lineTo(proj.x, proj.y);
+            for (int i = 0; i < particlesInRing; ++i)
+            {
+                float u = (i / (float)particlesInRing) * juce::MathConstants<float>::twoPi;
+
+                // Edge flow (fluid-like wave)
+                float wave = std::sin(u * 6.0f + v * 8.0f + time) * 5.0f * v;
+                float currentR = (r + wave) * pulse;
+
+                // 3D coordinates
+                float x3d = std::cos(u) * currentR;
+                float z3d = std::sin(u) * currentR;
+
+                // Y-axis rotation
+                float xRot = x3d * std::cos(mainRotY) - z3d * std::sin(mainRotY);
+                float zRot = x3d * std::sin(mainRotY) + z3d * std::cos(mainRotY);
+
+                // X-axis tilt
+                float yRot = y3d * std::cos(mainRotX) - zRot * std::sin(mainRotX);
+                float zFinal = y3d * std::sin(mainRotX) + zRot * std::cos(mainRotX);
+
+                // Perspective projection
+                float fov = 800.0f;
+                float perspective = fov / (fov + zFinal + 400.0f);
+
+                float x2d = cx + xRot * perspective;
+                float y2d = cy + yRot * perspective;
+
+                // Apply scatter effect (use modulo to map to available particle offsets)
+                if (scatterAmount > 0.0f)
+                {
+                    int offsetIndex = (j * 66 + i) % numParticles;  // Hash particles to offsets
+                    x2d += particleOffsets[offsetIndex].x * scatterAmount;
+                    y2d += particleOffsets[offsetIndex].y * scatterAmount;
+                }
+
+                // Brightness: brighter near throat (center)
+                float brightness = 0.25f + (1.0f - v) * 0.75f;
+
+                // Depth culling
+                bool isBack = zFinal > 30.0f;
+                float baseSize = (1.3f + normalizedIntensity * 1.5f) * perspective;
+                float size = isBack ? baseSize * 0.5f : baseSize;
+
+                // Opacity
+                float opacity = (brightness * 0.4f + normalizedIntensity * 0.6f) * perspective * (isBack ? 0.2f : 1.0f);
+
+                g.setColour(getColorWithAlpha(opacity));
+
+                // Energy crystals (every 14th particle)
+                int globalIndex = (j * 66 + i);  // Global particle index
+                if (globalIndex % 14 == 0 && !isBack)
+                {
+                    // Draw diamond with glow
+                    juce::Path diamond;
+                    float crystalSize = size * 1.8f;
+                    diamond.startNewSubPath(x2d, y2d - crystalSize);
+                    diamond.lineTo(x2d + crystalSize * 0.7f, y2d);
+                    diamond.lineTo(x2d, y2d + crystalSize);
+                    diamond.lineTo(x2d - crystalSize * 0.7f, y2d);
+                    diamond.closeSubPath();
+                    g.fillPath(diamond);
+                }
+                else
+                {
+                    // Regular particle (square for performance)
+                    g.fillRect(x2d - size * 0.5f, y2d - size * 0.5f, size, size);
+                }
+            }
         }
     }
 
-    // Draw curve with glow
-    g.setColour(getColorWithAlpha(0.3f + normalizedIntensity * 0.3f));
-    g.strokePath(curvePath, juce::PathStrokeType(2.0f));
-
-    // 2. Calculate UFO position on curve
-    float travelerT = std::fmod(time * 0.5f, juce::MathConstants<float>::twoPi);
-    float tx3d = scale * (std::sin(travelerT) + 2.0f * std::sin(2.0f * travelerT)) / 2.5f * 1.4f; // Horizontal stretch
-    float ty3d = scale * (std::cos(travelerT) - 2.0f * std::cos(2.0f * travelerT)) / 2.5f;
-    float tz3d = scale * (-std::sin(3.0f * travelerT)) / 2.0f;
-
-    auto travelerProj = project3D(tx3d, ty3d, tz3d, cx, cy);
-
-    // Current rotation angle
-    float currentRotation = time * 2.0f;
-
-    // Update trail buffer (circular buffer) for exhaust trail
-    sakuraTrail[trailWriteIndex] = juce::Point<float>(travelerProj.x, travelerProj.y);
-    sakuraTrailRotations[trailWriteIndex] = currentRotation;
-    trailWriteIndex = (trailWriteIndex + 1) % trailLength;
-
-    // 3. Draw exhaust trail (UFO exhaust particles)
-    juce::Random random;
-    random.setSeedRandomly();
-
-    for (int i = 0; i < trailLength; ++i)
-    {
-        int readIndex = (trailWriteIndex + i) % trailLength; // Oldest first
-        auto& trailPos = sakuraTrail[readIndex];
-        float trailRotation = sakuraTrailRotations[readIndex];
-
-        if (trailPos.x == 0.0f && trailPos.y == 0.0f) continue; // Skip uninitialized
-
-        float trailAge = (float)i / (float)trailLength; // 0.0 = oldest, 1.0 = newest
-
-        // Multiple exhaust particles per trail position
-        int particleCount = 3 + (int)(trailAge * 2);
-
-        for (int p = 0; p < particleCount; ++p)
-        {
-            // Brownian motion offset (exhaust turbulence)
-            float brownianScale = (1.0f - trailAge) * 15.0f;
-            float brownianX = (random.nextFloat() - 0.5f) * brownianScale;
-            float brownianY = (random.nextFloat() - 0.5f) * brownianScale;
-
-            // Spiral offset (exhaust swirl)
-            float spiralAngle = trailRotation + (p / (float)particleCount) * juce::MathConstants<float>::twoPi;
-            float spiralRadius = (1.0f - trailAge) * 8.0f;
-            float spiralX = std::cos(spiralAngle) * spiralRadius;
-            float spiralY = std::sin(spiralAngle) * spiralRadius;
-
-            float particleX = trailPos.x + brownianX + spiralX;
-            float particleY = trailPos.y + brownianY + spiralY;
-
-            // Exhaust particle appearance (glowing dots)
-            float particleAlpha = (1.0f - trailAge) * 0.6f;
-            float baseParticleSize = (3.0f + random.nextFloat() * 2.0f) * (1.0f - trailAge * 0.7f);
-            float particleSize = baseParticleSize * getParticleSizeMultiplier();
-
-            // Draw circular exhaust particle
-            g.setColour(getColorWithAlpha(particleAlpha));
-            g.fillEllipse(particleX - particleSize, particleY - particleSize,
-                          particleSize * 2.0f, particleSize * 2.0f);
-        }
-    }
-
-    // 4. Draw UFO with flash effect
-    float beatCycle = std::fmod(time * 1.5f, 2.0f);
-    bool isFlash = beatCycle < 0.2f;
-
-    float baseUfoSize = 20.0f + normalizedIntensity * 10.0f;
-    float ufoSize = baseUfoSize * getParticleSizeMultiplier();
-    float rotation = time * 2.0f;
-
-    drawUFO(g, travelerProj.x, travelerProj.y, ufoSize, rotation, isFlash);
+    // Central glow removed to avoid "pillar" effect in center
 }
 
-// Helper: Draw UFO (particle-based construction)
-void EnergyTopologyComponent::drawUFO(juce::Graphics& g, float x, float y, float size, float rotation, bool isFlash)
-{
-    // Flash alpha modifier
-    float flashMod = isFlash ? 1.2f : 1.0f;
-
-    // 1. Bottom disc (outer ring) - 20 particles in ellipse
-    const int bottomRingCount = 20;
-    float bottomRadiusX = size * 0.9f;
-    float bottomRadiusY = size * 0.3f; // Flattened ellipse
-
-    for (int i = 0; i < bottomRingCount; ++i)
-    {
-        float angle = rotation + (i / (float)bottomRingCount) * juce::MathConstants<float>::twoPi;
-        float px = x + std::cos(angle) * bottomRadiusX;
-        float py = y + std::sin(angle) * bottomRadiusY;
-
-        float particleSize = 1.5f;
-        g.setColour(getColorWithAlpha(0.7f * flashMod));
-        g.fillEllipse(px - particleSize, py - particleSize, particleSize * 2.0f, particleSize * 2.0f);
-    }
-
-    // 2. Middle disc (main body) - 16 particles in smaller ellipse
-    const int middleRingCount = 16;
-    float middleRadiusX = size * 0.7f;
-    float middleRadiusY = size * 0.25f;
-
-    for (int i = 0; i < middleRingCount; ++i)
-    {
-        float angle = rotation * 0.8f + (i / (float)middleRingCount) * juce::MathConstants<float>::twoPi;
-        float px = x + std::cos(angle) * middleRadiusX;
-        float py = y + std::sin(angle) * middleRadiusY + size * 0.1f; // Slightly above center
-
-        float particleSize = 1.8f;
-        g.setColour(getColorWithAlpha(0.85f * flashMod));
-        g.fillEllipse(px - particleSize, py - particleSize, particleSize * 2.0f, particleSize * 2.0f);
-    }
-
-    // 3. Top dome (cockpit) - 12 particles in arc
-    const int domeCount = 12;
-    float domeRadius = size * 0.5f;
-
-    for (int i = 0; i < domeCount; ++i)
-    {
-        // Arc from left to right (180 degrees)
-        float arcT = i / (float)(domeCount - 1); // 0 to 1
-        float angle = juce::MathConstants<float>::pi * (arcT - 0.5f); // -90° to +90°
-
-        float px = x + std::cos(angle) * domeRadius;
-        float py = y - size * 0.35f + std::sin(angle) * domeRadius * 0.5f; // Above center, flattened arc
-
-        float particleSize = 1.3f;
-        float domeAlpha = 0.6f + (1.0f - std::abs(arcT - 0.5f) * 2.0f) * 0.3f; // Brighter at center
-        g.setColour(getColorWithAlpha(domeAlpha * flashMod));
-        g.fillEllipse(px - particleSize, py - particleSize, particleSize * 2.0f, particleSize * 2.0f);
-    }
-
-    // 4. Center core (glowing center) - larger particle
-    float coreSize = isFlash ? 3.5f : 2.5f;
-    g.setColour(getColorWithAlpha(isFlash ? 1.0f : 0.9f));
-    g.fillEllipse(x - coreSize, y - coreSize, coreSize * 2.0f, coreSize * 2.0f);
-
-    // 5. Bottom lights (4 blinking lights under the disc)
-    const int lightCount = 4;
-    float lightRadius = size * 0.5f;
-
-    for (int i = 0; i < lightCount; ++i)
-    {
-        float angle = rotation * 1.5f + (i / (float)lightCount) * juce::MathConstants<float>::twoPi;
-        float px = x + std::cos(angle) * lightRadius;
-        float py = y + size * 0.4f; // Below center
-
-        // Blinking effect (each light blinks at different phase)
-        float blinkPhase = std::fmod(time * 3.0f + i * 0.5f, 1.0f);
-        float blinkAlpha = (blinkPhase < 0.5f) ? 0.9f : 0.3f;
-
-        if (isFlash) blinkAlpha = 1.0f; // All lights on during flash
-
-        float lightSize = 1.2f;
-        g.setColour(getColorWithAlpha(blinkAlpha));
-        g.fillEllipse(px - lightSize, py - lightSize, lightSize * 2.0f, lightSize * 2.0f);
-    }
-
-    // 6. Glow ring (outer glow when flashing)
-    if (isFlash)
-    {
-        const int glowRingCount = 24;
-        float glowRadius = size * 1.1f;
-
-        for (int i = 0; i < glowRingCount; ++i)
-        {
-            float angle = (i / (float)glowRingCount) * juce::MathConstants<float>::twoPi;
-            float px = x + std::cos(angle) * glowRadius;
-            float py = y + std::sin(angle) * glowRadius * 0.35f;
-
-            float glowSize = 1.0f;
-            g.setColour(getColorWithAlpha(0.5f));
-            g.fillEllipse(px - glowSize, py - glowSize, glowSize * 2.0f, glowSize * 2.0f);
-        }
-    }
-}

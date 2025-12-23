@@ -69,10 +69,10 @@ struct ThemePalette
 
             case ThemeType::Pink:
                 return {
-                    juce::Colour(0xFFFF3399),  // accent
-                    juce::Colour(0xFFFF0080),  // glow
-                    juce::Colour(0xFF1F0510),  // bg950
-                    juce::Colour(0xFF380A1C)   // panel900
+                    juce::Colour(0xFFf0a5c2),  // accent - soft pink #f0a5c2 (图片第一个颜色)
+                    juce::Colour(0xFFa75e72),  // glow - mauve pink #a75e72 (图片第二个颜色)
+                    juce::Colour(0xFF1A0812),  // bg950 - very dark pink tint
+                    juce::Colour(0xFF2D0F1A)   // panel900 - dark pink panel
                 };
 
             default:

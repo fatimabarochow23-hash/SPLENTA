@@ -25,9 +25,7 @@ public:
         const float dockWidth = (float)getWidth();
         const float dockHeight = (float)getHeight();
 
-        // Draw dock capsule background
-        g.setColour(juce::Colours::white.withAlpha(0.05f));
-        g.fillRoundedRectangle(0.0f, 0.0f, dockWidth, dockHeight, dockHeight * 0.5f);
+        // No background - pure color orbs only (macOS traffic light style)
 
         // Calculate orb properties
         const int padding = 4;

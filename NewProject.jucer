@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<JUCERPROJECT id="VycGdm" name="SPLENTA" projectType="audioplug" useAppConfig="0" addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1">
+<JUCERPROJECT id="VycGdm" name="SPLENTA" projectType="audioplug" useAppConfig="0" addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" companyName="Solaris" bundleIdentifier="com.solaris.SPLENTA" pluginManufacturerCode="SLRS" pluginCode="Splt">
   <MAINGROUP id="Kpwd8d" name="SPLENTA">
     <GROUP id="{BAB75B8F-DC22-7029-A0C0-25796381529F}" name="Source">
       <FILE id="kcwTFH" name="PluginProcessor.cpp" compile="1" resource="0" file="Source/PluginProcessor.cpp" />
@@ -40,7 +40,7 @@
   </MODULES>
   <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1" JUCE_VST3_CAN_REPLACE_VST2="0" />
   <EXPORTFORMATS>
-    <XCODE_MAC targetFolder="Builds/MacOSX">
+    <XCODE_MAC targetFolder="Builds/MacOSX" developmentTeamID="33NJKA4738">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" targetName="SPLENTA" />
         <CONFIGURATION isDebug="0" name="Release" targetName="SPLENTA" />

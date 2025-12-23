@@ -281,9 +281,26 @@ void NewProjectAudioProcessorEditor::drawPixelArt(juce::Graphics& g, int startX,
 
 void NewProjectAudioProcessorEditor::drawPixelHeadphone(juce::Graphics& g, int x, int y, int scale, juce::Colour c)
 {
-    std::vector<std::string> icon = { "0011111100", "0100000010", "0100000010", "1110000111", "1110000111", "1110000111", "0110000110", "0000000000" };
+    // Modern headphone icon (particle style) - 10x10 grid
+    // Design: Over-ear headphones with curved headband
+    std::vector<std::string> icon = {
+        "0011111100",  // Top headband curve
+        "0100000010",  // Headband inner
+        "1000000001",  // Headband outer arms
+        "1000000001",  // Arms extend down
+        "1100000011",  // Ear cup top
+        "1110000111",  // Ear cup main (thicker)
+        "1110000111",  // Ear cup main
+        "0110000110",  // Ear cup bottom
+        "0000000000",  // Gap
+        "0000000000"   // Empty row
+    };
+
     g.setColour(c);
-    for(int r=0; r<8; ++r) for(int c=0; c<10; ++c) if(icon[r][c]=='1') g.fillRect(x+c*scale, y+r*scale, scale, scale);
+    for(int r=0; r<10; ++r)
+        for(int col=0; col<10; ++col)
+            if(icon[r][col]=='1')
+                g.fillEllipse(x+col*scale, y+r*scale, scale, scale);  // Use circles for particle look
 }
 
 void NewProjectAudioProcessorEditor::drawSaveIcon(juce::Graphics& g, int x, int y, int scale, juce::Colour c)
